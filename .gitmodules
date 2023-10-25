@@ -1,0 +1,3 @@
+[submodule "Lib/DelphiAST"]
+	path = Lib/DelphiAST
+	url = https://github.com/Irame/DelphiAST.git
