@@ -35,6 +35,7 @@ type
       OwnerClassNode: TClassTreeNode
     ): TClassTreeNode;
     function CreateFunctionTreeNode(
+      ClassNode: TClassTreeNode;
       FunctionName: String;
       FunctionType: TMethodTypeEnum;
       Visibility: TVisibilityEnum;
@@ -131,6 +132,7 @@ begin
 end;
 
 function TTreeParser.CreateFunctionTreeNode(
+  ClassNode: TClassTreeNode;
   FunctionName: String;
   FunctionType: TMethodTypeEnum;
   Visibility: TVisibilityEnum;
@@ -144,6 +146,9 @@ begin
   Result.Visibility := Visibility;
   Result.DeclarationLine := DeclarationLine;
   Result.ImplementationLine := ImplementationLine;
+  Result.ClassNodeName := ClassNode.ClassNodeName;
+
+  // TODO: Fix for nested class
 
   Inc(FIDKeyCount);
 end;
@@ -317,6 +322,7 @@ begin
     end;
 
     FunctionTreeNode := CreateFunctionTreeNode(
+      ClassTreeNode,
       Iteration.GetAttribute(anName),
       GetMethodType(Iteration),
       Visibility,
@@ -506,6 +512,7 @@ procedure TTreeParser.RecurseAddCallMethod(
           if (SameText(Iteration.ChildNodes[0].GetAttribute(anName), 'self')
            or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ThisClassNode.ClassNodeName)) then
           begin
+
             FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName); // Search only in class of this function
           end
           else begin
@@ -516,7 +523,6 @@ procedure TTreeParser.RecurseAddCallMethod(
               ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
 
               if Assigned(ResultMethodVal) then begin
-                ResultMethodVal.ClassNodeName := ClassNodeItem.ClassNodeName;
                 FoundMethodNode := ResultMethodVal;
                 Break;
               end;
