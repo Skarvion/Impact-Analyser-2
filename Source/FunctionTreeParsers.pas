@@ -8,6 +8,7 @@ uses
   , FunctionTreeNodes
   , DelphiAST.Classes
   , DelphiAST.Consts
+  , DelphiAST.ProjectIndexer
   ;
 
 type
@@ -59,6 +60,7 @@ type
       constructor Create;
       destructor Destroy; override;
 
+      procedure ParseFromProjectIndex(ProjectIndex: TProjectIndexer);
       procedure ParseFromDelphiAST(SyntaxNode: TSyntaxNode);
       procedure ClearTree;
 
@@ -74,6 +76,7 @@ uses
     Classes
   , SysUtils
   , StrUtils
+  , System.RegularExpressions
   ;
 
 { TFunctionTreeParser }
@@ -175,11 +178,21 @@ end;
 
 procedure TFunctionTreeParser.ParseFromDelphiAST(SyntaxNode: TSyntaxNode);
 begin
-  ClearTree;
   FRootSyntaxNode := SyntaxNode;
   PopulateClassAndMethodList;
   PopulateMethodImplementation;
   FIsLoaded := True;
+end;
+
+procedure TFunctionTreeParser.ParseFromProjectIndex(ProjectIndex: TProjectIndexer);
+var
+  Index: Integer;
+begin
+  for Index := 0 to ProjectIndex.ParsedUnits.Count - 1 do begin
+    if TRegEx.IsMatch(ProjectIndex.ParsedUnits[Index].Path, '\.pas$') then begin
+      ParseFromDelphiAST(ProjectIndex.ParsedUnits[Index].SyntaxTree);
+    end;
+  end;
 end;
 
 procedure TFunctionTreeParser.PopulateClassAndMethodList;

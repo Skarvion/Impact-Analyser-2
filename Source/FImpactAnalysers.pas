@@ -165,11 +165,14 @@ var
   Index: Integer;
 begin
   MemoEditor.Lines.Text := '';
+  FFunctionTreeParser.ClearTree;
 
   FIndexer := TProjectIndexer.Create;
   FileSelector := TFileOpenDialog.Create(Self);
 
   if FileSelector.Execute then begin
+    FIndexer.SearchPath := '../';
+
     FIndexer.Index(FileSelector.FileName);
   end;
 
@@ -181,6 +184,10 @@ begin
       ' First child node type: ' + SyntaxNodeNames[FIndexer.ParsedUnits[Index].SyntaxTree.ChildNodes[0].Typ] +
       ' Node Type: ' +  SyntaxNodeNames[FIndexer.ParsedUnits[Index].SyntaxTree.Typ];
   end;
+
+  FFunctionTreeParser.ParseFromProjectIndex(FIndexer);
+
+  DisplayTree;
 
   FreeAndNil(FileSelector);
 end;
@@ -369,8 +376,13 @@ begin
     HideDisplay;
   end;
 
+  // Expand a node like this:
+  // Node.Expanded := True;
+
   DataObject := TObject(Node.Data);
+
   if DataObject is TClassTreeNode then begin
+    MemoEditor.Text := (DataObject as TClassTreeNode).ClassNodeName;
     DisplayClassNodeInformation(DataObject as TClassTreeNode);
   end
   else if DataObject is TMethodTreeNode then begin
