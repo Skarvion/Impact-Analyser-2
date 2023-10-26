@@ -131,7 +131,9 @@ class function TFunctionTreeParser.GetFunctionTreeVisibility(
   SyntaxNodeType: TSyntaxNodeType): TVisibilityEnum;
 begin
   case SyntaxNodeType of
+    ntStrictPrivate: Result := vStrictPrivate;
     ntPrivate: Result := vPrivate;
+    ntStrictProtected: Result := vStrictProtected;
     ntProtected: Result := vProtected;
     ntPublic: Result := vPublic;
     ntPublished: Result := vPublished;
@@ -235,7 +237,7 @@ begin
   ProcessClassMethodListByVisibility(ClassTreeNode, TypeNode);
 
   for Iteration in TypeNode.ChildNodes do begin
-    if Iteration.Typ in [ntPrivate, ntPublic, ntProtected, ntPublished] then begin
+    if Iteration.Typ in [ntStrictPrivate, ntPrivate, ntStrictProtected, ntProtected, ntPublic, ntPublished] then begin
       ProcessClassMethodListByVisibility(ClassTreeNode, Iteration);
     end;
   end;
@@ -249,7 +251,7 @@ var
   Visibility: TVisibilityEnum;
   FunctionTreeNode: TMethodTreeNode;
 begin
-  if not (SyntaxNode.Typ in [ntPrivate, ntProtected, ntPublic, ntPublished]) then begin
+  if not (SyntaxNode.Typ in [ntStrictPrivate, ntPrivate, ntStrictProtected, ntProtected, ntPublic, ntPublished]) then begin
     Visibility := vPrivate;
   end
   else begin
@@ -421,7 +423,7 @@ var
 begin
   Result := TList<TMethodTreeNode>.Create;
   for SelectedClassTreeNode in FInFileClassList do begin
-    for SelectedMethodTreeNode in SelectedClassTreeNode.GetMethodNodeByVisibility([vPrivate]) do
+    for SelectedMethodTreeNode in SelectedClassTreeNode.GetMethodNodeByVisibility([vStrictPrivate, vPrivate]) do
     begin
       if SelectedMethodTreeNode.CallerList.Count = 0 then begin
         Result.Add(SelectedMethodTreeNode);

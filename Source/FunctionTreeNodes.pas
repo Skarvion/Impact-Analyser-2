@@ -18,7 +18,9 @@ type
     ftDestructor);
 
   TVisibilityEnum = (
+    vStrictPrivate,
     vPrivate,
+    vStrictProtected,
     vProtected,
     vPublic,
     vPublished);
@@ -37,7 +39,9 @@ type
       'DESTRUCTOR');
 
     C_VisibilityTypeString: array [TVisibilityEnum] of String = (
+      'STRICT PRIVATE',
       'PRIVATE',
+      'STRICT PROTECTED',
       'PROTECTED',
       'PUBLIC',
       'PUBLISHED');
@@ -150,7 +154,9 @@ end;
 function TMethodTreeNode.GetVisibilityAsString: String;
 begin
   case FVisibility of
+    vStrictPrivate: Result := 'strict private';
     vPrivate: Result := 'private';
+    vStrictProtected: Result := 'strict protected';
     vProtected: Result := 'protected';
     vPublic: Result := 'public';
     vPublished: Result := 'published';

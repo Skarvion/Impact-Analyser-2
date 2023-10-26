@@ -240,7 +240,7 @@ begin
     MethodVisibilitySet := [vPublic, vPublished];
   end
   else begin
-    MethodVisibilitySet := [vPrivate, vProtected, vPublic, vPublished];
+    MethodVisibilitySet := [Low(TVisibilityEnum)..High(TVisibilityEnum)];
   end;
 
   FormClassTreeNode := TreeViewClassTree.Items.AddObject(nil, ClassNode.ClassNodeName, ClassNode);
@@ -482,7 +482,9 @@ begin
     MethodNode := DataObject as TMethodTreeNode;
 
     case MethodNode.Visibility of
+      vStrictPrivate: SelectedColor := clRed;
       vPrivate: SelectedColor := clRed;
+      vStrictProtected: SelectedColor := clBlue;
       vProtected: SelectedColor := clBlue;
       vPublic: SelectedColor := clGreen;
       vPublished: SelectedColor := clPurple;
