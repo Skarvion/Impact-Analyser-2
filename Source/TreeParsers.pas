@@ -572,7 +572,9 @@ begin
   end;
 
   FUncateredMethods.Clear;
+  FClassNodes.Clear;
   FInFileClassList.Clear;
+
 end;
 
 function TTreeParser.GetUnusedPrivateMethods: TList<TMethodTreeNode>;

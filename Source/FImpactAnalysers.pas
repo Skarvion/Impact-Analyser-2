@@ -155,7 +155,7 @@ end;
 procedure TImpactAnalyserForm.MenuItemOpenClick(Sender: TObject);
 begin
   if OpenDialog.Execute then begin
-    MemoEditor.Lines.Text := TFile.ReadAllText(OpenDialog.FileName);
+//    MemoEditor.Lines.Text := TFile.ReadAllText(OpenDialog.FileName);
     FFileName := OpenDialog.FileName;
     Parse(rfFromFile);
   end;
@@ -171,15 +171,21 @@ var
 begin
   FTreeParser.ClearTree;
 
+  FreeAndNil(FIndexer);
   FIndexer := TProjectIndexer.Create;
   FileSelector := TFileOpenDialog.Create(Self);
 
   if FileSelector.Execute then begin
-    FIndexer.SearchPath := '../';
+    FIndexer.SearchPath :=
+    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
+    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
+    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
 
     FIndexer.Index(FileSelector.FileName);
   end;
-
 
   FTreeParser.ParseFromProjectIndex(FIndexer);
 
@@ -230,7 +236,7 @@ begin
         Stream.LoadFromFile(FFileName);
       end
       else begin
-        MemoEditor.Lines.SaveToStream(Stream);
+//        MemoEditor.Lines.SaveToStream(Stream);
       end;
 
       // Init the AST syntax tree builder (big tree builder)
@@ -245,7 +251,7 @@ begin
       FSyntaxTree := SyntaxTree;
 
       if FGenerateASTXML then begin
-        MemoEditor.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
+//        MemoEditor.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
       end;
 
       // Build small tree
@@ -257,7 +263,7 @@ begin
       on E: Exception do begin
         ShowMessage(E.Message);
         TreeViewClassTree.Items.Clear;
-        MemoEditor.Lines.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
+//        MemoEditor.Lines.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
       end;
     end;
   finally
@@ -358,7 +364,7 @@ procedure TImpactAnalyserForm.DisplayCursorPositionInStatus;
 var
   CursorCoordinate: TPoint;
 begin
-  CursorCoordinate := MemoEditor.CaretPos;
+//  CursorCoordinate := MemoEditor.CaretPos;
   StatusBar.SimpleText := IntToStr(CursorCoordinate.Y + 1) + ' : ' + IntToStr(CursorCoordinate.X + 1);
 end;
 
@@ -370,8 +376,8 @@ var
 begin
   CursorCoordinate.X := 0;
   CursorCoordinate.Y := LineNumber - 1;
-  MemoEditor.CaretPos := CursorCoordinate;
-  MemoEditor.SelLength := Length(MemoEditor.Lines[LineNumber - 1]);
+//  MemoEditor.CaretPos := CursorCoordinate;
+//  MemoEditor.SelLength := Length(MemoEditor.Lines[LineNumber - 1]);
 
   DisplayCursorPositionInStatus;
 end;
@@ -392,7 +398,7 @@ begin
   DataObject := TObject(Node.Data);
 
   if DataObject is TClassTreeNode then begin
-    MemoEditor.Text := (DataObject as TClassTreeNode).ClassNodeName;
+//    MemoEditor.Text := (DataObject as TClassTreeNode).ClassNodeName;
     DisplayClassNodeInformation(DataObject as TClassTreeNode);
   end
   else if DataObject is TMethodTreeNode then begin
@@ -687,7 +693,7 @@ begin
   FFileName := '';
   FGenerateASTXML := False;
   FOnlyShowPublicMethod := False;
-  MemoEditor.Lines.Text := '';
+//  MemoEditor.Lines.Text := '';
 end;
 
 end.
