@@ -501,16 +501,14 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
         // MyClass.MyFunc
         else if Length(Iteration.ChildNodes) = 2 then begin
 
+          CalledMethodName := Iteration.ChildNodes[1].GetAttribute(anName);
 
           if (SameText(Iteration.ChildNodes[0].GetAttribute(anName), 'self')
            or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ThisClassNode.ClassNodeName)) then
           begin
-            CalledMethodName := Iteration.ChildNodes[1].GetAttribute(anName);
-            FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName); // Search only in current class
+            FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName); // Search only in class of this function
           end
           else begin
-            CalledMethodName :=  Iteration.ChildNodes[1].GetAttribute(anName);
-
             // Search all classes, except current class
             for ClassNodeItem in FClassNodes do begin
               if ClassNodeItem.ClassNodeName = ThisClassNode.ClassNodeName then Continue;
@@ -531,9 +529,6 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
           raise Exception.Create('Called method name is invalid:');
         end;
 
-        // TODO: instead of checking THIS class only, we need to check ALL classes
-        // FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
-
         if Assigned(FoundMethodNode) then begin
           // SelectedMethodNode has a call to FoundMethodNode in it's implementation.
           SelectedMethodNode.AddMethodCall(FoundMethodNode);
@@ -544,17 +539,14 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
 var
   Iteration: TSyntaxNode;
 begin
-  // For ALL children of STATEMENTS node
+  // For ALL children of STATEMENTS node (root case)
   for Iteration in SyntaxNode.ChildNodes do begin
 
     // Only if the node is a CALL node:
-
     if Iteration.Typ = ntCall then begin
       AddFoundMethodToSelectedMethod(Iteration);
     end
 
-    // This is never reached beacuse parent no child of statment is dot
-    // Call must come first, then have dot inside.
     else if Iteration.Typ = ntDot then begin
        AddFoundMethodToSelectedMethod(Iteration);
     end;

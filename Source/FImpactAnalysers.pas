@@ -219,6 +219,8 @@ var
   SyntaxTree: TSyntaxNode;
 begin
   try
+
+    // read from code file
     Stream := TStringStream.Create;
     try
       if ReloadFrom = rfFromFile then begin
@@ -231,12 +233,15 @@ begin
       else begin
         MemoEditor.Lines.SaveToStream(Stream);
       end;
+
+      // Init the AST syntax tree builder (big tree builder)
       Builder := TPasSyntaxTreeBuilder.Create;
       Builder.InterfaceOnly := False;
       Builder.OnHandleString := nil;
       Builder.InitDefinesDefinedByCompiler;
       Builder.IncludeHandler := nil;
 
+      // Build big tree
       SyntaxTree := Builder.Run(Stream);
       FSyntaxTree := SyntaxTree;
 
@@ -244,7 +249,10 @@ begin
         MemoEditor.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
       end;
 
+      // Build small tree
       FFunctionTreeParser.ParseFromDelphiAST(SyntaxTree);
+
+
       DisplayTree;
     except
       on E: Exception do begin
@@ -264,14 +272,16 @@ end;
 
 procedure TImpactAnalyserForm.DisplayTree;
 var
-  Iteration: TClassTreeNode;
+  ClassNode: TClassTreeNode;
 begin
   TreeViewClassTree.Items.Clear;
   if not FFunctionTreeParser.IsLoaded then begin
     Exit;
   end;
-  for Iteration in FFunctionTreeParser.InFileClassList do begin
-    DisplayClassNodeOnTree(Iteration);
+
+  // Use FunctionTreeParser's InFileClass List to display each node on tree
+  for ClassNode in FFunctionTreeParser.InFileClassList do begin
+    DisplayClassNodeOnTree(ClassNode);
   end;
 end;
 
@@ -291,7 +301,7 @@ procedure TImpactAnalyserForm.DisplayClassNodeOnTree(
   ClassNode: TClassTreeNode);
 var
   FormClassTreeNode: TTreeNode;
-  Iteration: TMethodTreeNode;
+  MethodNode: TMethodTreeNode;
   MethodVisibilitySet: TVisibilityEnumSet;
 begin
   if FOnlyShowPublicMethod then begin
@@ -301,9 +311,13 @@ begin
     MethodVisibilitySet := [Low(TVisibilityEnum)..High(TVisibilityEnum)];
   end;
 
+  // Add this ClassNode to the TTreeView tree
   FormClassTreeNode := TreeViewClassTree.Items.AddObject(nil, ClassNode.ClassNodeName, ClassNode);
-  for Iteration in ClassNode.GetMethodNodeByVisibility(MethodVisibilitySet) do begin
-    DisplayMethodNodeOnTreeRecursive(FormClassTreeNode, Iteration);
+
+
+  // Add each Method Node for this Class Node to the TTreeView recursively
+  for MethodNode in ClassNode.GetMethodNodeByVisibility(MethodVisibilitySet) do begin
+    DisplayMethodNodeOnTreeRecursive(FormClassTreeNode, MethodNode);
   end;
 end;
 
@@ -314,12 +328,14 @@ procedure TImpactAnalyserForm.DisplayMethodNodeOnTreeRecursive(
   MethodNode: TMethodTreeNode);
 var
   FormMethodTreeNode: TTreeNode;
-  Iteration: TMethodTreeNode;
+  MethodNodeCalledWithinThisMethodNode: TMethodTreeNode;
 begin
+  // Add this method as a child of the TTree class node
   FormMethodTreeNode := TreeViewClassTree.Items.AddChildObject(
     ParentTreeNode, MethodNode.FunctionName, MethodNode);
-  for Iteration in MethodNode.MethodCallList do begin
-    DisplayMethodNodeOnTreeRecursive(FormMethodTreeNode, Iteration);
+
+  for MethodNodeCalledWithinThisMethodNode in MethodNode.MethodCallList do begin
+    DisplayMethodNodeOnTreeRecursive(FormMethodTreeNode, MethodNodeCalledWithinThisMethodNode);
   end;
 end;
 
