@@ -57,7 +57,7 @@ type
       MethodNode: TMethodTreeNode;
       SyntaxNode: TSyntaxNode);
     procedure RecurseAddCallMethod(
-      ClassNode: TClassTreeNode;
+      ThisClassNode: TClassTreeNode;
       SelectedMethodNode: TMethodTreeNode;
       SyntaxNode: TSyntaxNode);
 
@@ -469,7 +469,7 @@ begin
 end;
 
 procedure TFunctionTreeParser.RecurseAddCallMethod(
-  ClassNode: TClassTreeNode;
+  ThisClassNode: TClassTreeNode;
   SelectedMethodNode: TMethodTreeNode;
   // Method content (big tree statements node)
   SyntaxNode: TSyntaxNode);
@@ -495,7 +495,7 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
         // MyFunc
         if Length(Iteration.ChildNodes) = 1 then begin
           CalledMethodName := Iteration.ChildNodes[0].GetAttribute(anName);
-          FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
+          FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName);
         end
 
         // MyClass.MyFunc
@@ -503,17 +503,17 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
 
 
           if (SameText(Iteration.ChildNodes[0].GetAttribute(anName), 'self')
-           or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ClassNode.ClassNodeName)) then
+           or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ThisClassNode.ClassNodeName)) then
           begin
             CalledMethodName := Iteration.ChildNodes[1].GetAttribute(anName);
-            FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName); // Search only in current class
+            FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName); // Search only in current class
           end
           else begin
             CalledMethodName :=  Iteration.ChildNodes[1].GetAttribute(anName);
 
             // Search all classes, except current class
             for ClassNodeItem in FClassNodes do begin
-              if ClassNodeItem.ClassNodeName = ClassNode.ClassNodeName then Continue;
+              if ClassNodeItem.ClassNodeName = ThisClassNode.ClassNodeName then Continue;
 
               ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
 
@@ -559,7 +559,7 @@ begin
        AddFoundMethodToSelectedMethod(Iteration);
     end;
 
-    RecurseAddCallMethod(ClassNode, SelectedMethodNode, Iteration);
+    RecurseAddCallMethod(ThisClassNode, SelectedMethodNode, Iteration);
   end;
 end;
 
