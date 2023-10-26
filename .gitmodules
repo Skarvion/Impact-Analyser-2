@@ -1,3 +1,6 @@
 [submodule "Lib/DelphiAST"]
 	path = Lib/DelphiAST
 	url = https://github.com/Irame/DelphiAST.git
+[submodule "Lib/FastMM5"]
+	path = Lib/FastMM5
+	url = https://github.com/pleriche/FastMM5.git
