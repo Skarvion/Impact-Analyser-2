@@ -22,6 +22,10 @@ type
     // Class definition from Delphi AST
     FRootSyntaxNode: TSyntaxNode;
 
+    FSyntaxNodeDict: TDictionary<String, TSyntaxNode>;
+
+    FClassNodes: TObjectList<TClassTreeNode>;
+
     FUncateredMethods: TList<TSyntaxNode>;
 
     function CreateClassTreeNode(
@@ -94,6 +98,8 @@ begin
   FIsLoaded := False;
 
   FUncateredMethods := TList<TSyntaxNode>.Create;
+
+  FClassNodes := TObjectList<TClassTreeNode>.Create(False);
 end;
 
 destructor TFunctionTreeParser.Destroy;
@@ -101,6 +107,7 @@ begin
   ClearTree;
   FreeAndNil(FUncateredMethods);
   FreeAndNil(FInFileClassList);
+  FreeAndNil(FClassNodes);
   inherited;
 end;
 
@@ -120,6 +127,7 @@ begin
   );
 
   Inc(FIDKeyCount);
+  FClassNodes.Add(Result);
 end;
 
 function TFunctionTreeParser.CreateFunctionTreeNode(
@@ -465,68 +473,86 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
   SelectedMethodNode: TMethodTreeNode;
   // Method content (big tree statements node)
   SyntaxNode: TSyntaxNode);
-var
-  Iteration: TSyntaxNode;
-  IdentifierSyntaxNode: TSyntaxNode;
-  RawMethodNameList: TStringList;
-  CalledMethodName: String;
-  FoundMethodNode: TMethodTreeNode;
-begin
-  // For ALL children of STATEMENTS node
-  for Iteration in SyntaxNode.ChildNodes do begin
 
-    // Only if the node is a CALL node:
-    if Iteration.Typ = ntCall then begin
-
+  procedure AddFoundMethodToSelectedMethod(
+    Iteration: TSyntaxNode
+  );
+  var
+    IdentifierSyntaxNode: TSyntaxNode;
+    CalledMethodName: String;
+    FoundMethodNode: TMethodTreeNode;
+    ResultMethodVal: TMethodTreeNode;
+    ClassNodeItem: TClassTreeNode;
+  begin
       IdentifierSyntaxNode := Iteration.FindNode(ntIdentifier);
+
+      FoundMethodNode := nil;
+
+      // We did not go into the dot
 
       if Assigned(IdentifierSyntaxNode) then begin
 
-        // MyClass.MyFunc or MyFunc
-        RawMethodNameList := TStringList.Create;
-        RawMethodNameList.Delimiter := '.';
-        RawMethodNameList.DelimitedText := IdentifierSyntaxNode.GetAttribute(anName);
-
         // MyFunc
-        if RawMethodNameList.Count = 1 then begin
-          CalledMethodName := RawMethodNameList[0];
+        if Length(Iteration.ChildNodes) = 1 then begin
+          CalledMethodName := Iteration.ChildNodes[0].GetAttribute(anName);
+          FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
         end
-
         // MyClass.MyFunc
-        else if RawMethodNameList.Count = 2 then begin
+        else if Length(Iteration.ChildNodes) = 2 then begin
 
 
-          if (SameText(RawMethodNameList[0], 'self') or SameText(RawMethodNameList[0], ClassNode.ClassNodeName)) then
+          if (SameText(Iteration.ChildNodes[0].GetAttribute(anName), 'self')
+           or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ClassNode.ClassNodeName)) then
           begin
-            CalledMethodName := RawMethodNameList[1];
+            CalledMethodName := Iteration.ChildNodes[1].GetAttribute(anName);
+            FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName); // Search only in current class
           end
           else begin
-             CalledMethodName :=  RawMethodNameList[0] + '.' + RawMethodNameList[1];
+            CalledMethodName :=  Iteration.ChildNodes[1].GetAttribute(anName);
+
+            // Search all classes, except current class
+            for ClassNodeItem in FClassNodes do begin
+              if ClassNodeItem.UnitName = ClassNode.UnitName then Continue;
+
+              ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
+
+              if Assigned(ResultMethodVal) then begin
+                FoundMethodNode := ResultMethodVal;
+                Break;
+              end;
+            end;
           end;
 
         end
 
         // Error
         else begin
-          raise Exception.Create('Called method name is invalid: ' + RawMethodNameList.DelimitedText);
+          raise Exception.Create('Called method name is invalid:');
         end;
 
-        FreeAndNil(RawMethodNameList);
-
-
         // TODO: instead of checking THIS class only, we need to check ALL classes
-        FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
-
-        for
-
-
-
+        // FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
 
         if Assigned(FoundMethodNode) then begin
           // SelectedMethodNode has a call to FoundMethodNode in it's implementation.
           SelectedMethodNode.AddMethodCall(FoundMethodNode);
         end;
       end;
+  end;
+
+var
+  Iteration: TSyntaxNode;
+begin
+  // For ALL children of STATEMENTS node
+  for Iteration in SyntaxNode.ChildNodes do begin
+
+    // Only if the node is a CALL node:
+
+    if Iteration.Typ = ntCall then begin
+      AddFoundMethodToSelectedMethod(Iteration);
+    end
+    else if Iteration.Typ = ntDot then begin
+       AddFoundMethodToSelectedMethod(Iteration);
     end;
 
     RecurseAddCallMethod(ClassNode, SelectedMethodNode, Iteration);
