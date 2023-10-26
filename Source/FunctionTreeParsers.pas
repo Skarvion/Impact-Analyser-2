@@ -497,6 +497,7 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
           CalledMethodName := Iteration.ChildNodes[0].GetAttribute(anName);
           FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
         end
+
         // MyClass.MyFunc
         else if Length(Iteration.ChildNodes) = 2 then begin
 
@@ -512,7 +513,7 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
 
             // Search all classes, except current class
             for ClassNodeItem in FClassNodes do begin
-              if ClassNodeItem.UnitName = ClassNode.UnitName then Continue;
+              if ClassNodeItem.ClassNodeName = ClassNode.ClassNodeName then Continue;
 
               ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
 
@@ -551,6 +552,9 @@ begin
     if Iteration.Typ = ntCall then begin
       AddFoundMethodToSelectedMethod(Iteration);
     end
+
+    // This is never reached beacuse parent no child of statment is dot
+    // Call must come first, then have dot inside.
     else if Iteration.Typ = ntDot then begin
        AddFoundMethodToSelectedMethod(Iteration);
     end;
