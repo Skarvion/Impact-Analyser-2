@@ -21,19 +21,31 @@ type
       'RECORD',
       'SCOPE');
 
-  private
+  strict private
     FID: Integer;
     FClassNodeName: String;
     FClassNodeType: TClassNodeTypeEnum;
     FDeclarationLine: Integer;
+    FOwnerClassNode: TClassTreeNode;
+
     FMethodList: TList<TMethodTreeNode>;
+    FNestedClassNodes: TObjectList<TClassTreeNode>;
 
   public
     constructor Create(
       ID: Integer;
       ClassName: String;
       ClassType: TClassNodeTypeEnum;
-      DeclarationLine: Integer = 1);
+      DeclarationLine: Integer;
+      OwnerClassNode: TClassTreeNode
+    ); overload;
+    constructor Create(
+      ID: Integer;
+      ClassName: String;
+      ClassType: TClassNodeTypeEnum;
+      DeclarationLine: Integer
+    ); overload;
+
     destructor Destroy; override;
 
     procedure AddFunctionTreeNode(Node: TMethodTreeNode);
@@ -44,11 +56,14 @@ type
 
     function GetMethodNodeByVisibility(Visibility: TVisibilityEnumSet): TList<TMethodTreeNode>;
 
-    property ID: Integer read FID write FID;
-    property ClassNodeName: String read FClassNodeName write FClassNodeName;
-    property ClassNodeType: TClassNodeTypeEnum read FClassNodeType write FClassNodeType;
-    property DeclarationLine: Integer read FDeclarationLine write FDeclarationLine;
+    property ID: Integer read FID;
+    property ClassNodeName: String read FClassNodeName;
+    property ClassNodeType: TClassNodeTypeEnum read FClassNodeType;
+    property DeclarationLine: Integer read FDeclarationLine;
+    property OwnerClassNode: TClassTreeNode read FOwnerClassNode;
+
     property MethodList: TList<TMethodTreeNode> read FMethodList;
+    property NestedClassNodes: TObjectList<TClassTreeNode> read FNestedClassNodes;
   end;
 
 implementation
@@ -63,19 +78,35 @@ constructor TClassTreeNode.Create(
   ID: Integer;
   ClassName: String;
   ClassType: TClassNodeTypeEnum;
-  DeclarationLine: Integer = 1);
+  DeclarationLine: Integer;
+  OwnerClassNode: TClassTreeNode
+);
 begin
   FID := ID;
   FClassNodeName := ClassName;
   FClassNodeType := ClassType;
   FDeclarationLine := DeclarationLine;
+  FOwnerClassNode := OwnerClassNode;
+
   FMethodList := TList<TMethodTreeNode>.Create;
+  FNestedClassNodes := TObjectList<TClassTreeNode>.Create(True);
+end;
+
+constructor TClassTreeNode.Create(
+  ID: Integer;
+  ClassName: String;
+  ClassType: TClassNodeTypeEnum;
+  DeclarationLine: Integer
+);
+begin
+  Create(ID, ClassNodeName, ClassType, DeclarationLine, nil);
 end;
 
 destructor TClassTreeNode.Destroy;
 var
   Iteration: TMethodTreeNode;
 begin
+  FreeAndNil(FNestedClassNodes);
   for Iteration in FMethodList do begin
     Iteration.Free;
   end;
