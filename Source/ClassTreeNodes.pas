@@ -4,7 +4,7 @@ interface
 
 uses
     System.Generics.Collections
-  , FunctionTreeNodes
+  , MethodTreeNodes
   ;
 
 type
@@ -52,7 +52,7 @@ type
 
     function GetMethodNode(
       MethodName: String;
-      MethodType: TFunctionTypeEnum = ftNone): TMethodTreeNode;
+      MethodType: TMethodTypeEnum = ftNone): TMethodTreeNode;
 
     function GetMethodNodeByVisibility(Visibility: TVisibilityEnumSet): TList<TMethodTreeNode>;
 
@@ -121,7 +121,7 @@ end;
 
 function TClassTreeNode.GetMethodNode(
   MethodName: String;
-  MethodType: TFunctionTypeEnum = ftNone): TMethodTreeNode;
+  MethodType: TMethodTypeEnum = ftNone): TMethodTreeNode;
 var
   Iteration: TMethodTreeNode;
 begin

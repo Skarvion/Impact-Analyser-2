@@ -80,8 +80,8 @@
             <Form>ImpactAnalyserForm</Form>
             <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="FunctionTreeNodes.pas"/>
-        <DCCReference Include="FunctionTreeParsers.pas"/>
+        <DCCReference Include="MethodTreeNodes.pas"/>
+        <DCCReference Include="TreeParsers.pas"/>
         <DCCReference Include="ClassTreeNodes.pas"/>
         <DCCReference Include="MethodAttributes.pas"/>
         <BuildConfiguration Include="Base">

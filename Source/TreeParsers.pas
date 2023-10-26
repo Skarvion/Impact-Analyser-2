@@ -1,11 +1,11 @@
-unit FunctionTreeParsers;
+unit TreeParsers;
 
 interface
 
 uses
     System.Generics.Collections
   , ClassTreeNodes
-  , FunctionTreeNodes
+  , MethodTreeNodes
   , DelphiAST.Classes
   , DelphiAST.Consts
   , DelphiAST.ProjectIndexer
@@ -13,7 +13,7 @@ uses
 
 type
 
-  TFunctionTreeParser = class(TObject)
+  TTreeParser = class(TObject)
   private
     FIDKeyCount: Integer;
     FInFileClassList: TObjectList<TClassTreeNode>;
@@ -36,7 +36,7 @@ type
     ): TClassTreeNode;
     function CreateFunctionTreeNode(
       FunctionName: String;
-      FunctionType: TFunctionTypeEnum;
+      FunctionType: TMethodTypeEnum;
       Visibility: TVisibilityEnum;
       DeclarationLine: Integer = 1;
       ImplementationLine: Integer = 1): TMethodTreeNode;
@@ -63,7 +63,7 @@ type
 
     // More Delphi AST specific implementation
     class function GetFunctionTreeVisibility(SyntaxNodeType: TSyntaxNodeType): TVisibilityEnum;
-    class function GetMethodType(SyntaxNode: TSyntaxNode): TFunctionTypeEnum;
+    class function GetMethodType(SyntaxNode: TSyntaxNode): TMethodTypeEnum;
 
     public
       constructor Create;
@@ -91,7 +91,7 @@ uses
 
 { TFunctionTreeParser }
 
-constructor TFunctionTreeParser.Create;
+constructor TTreeParser.Create;
 begin
   FIDKeyCount := 0;
   FInFileClassList := TObjectList<TClassTreeNode>.Create(True);
@@ -102,7 +102,7 @@ begin
   FClassNodes := TObjectList<TClassTreeNode>.Create(False);
 end;
 
-destructor TFunctionTreeParser.Destroy;
+destructor TTreeParser.Destroy;
 begin
   ClearTree;
   FreeAndNil(FUncateredMethods);
@@ -111,7 +111,7 @@ begin
   inherited;
 end;
 
-function TFunctionTreeParser.CreateClassTreeNode(
+function TTreeParser.CreateClassTreeNode(
   ClassName: String;
   ClassType: TClassNodeTypeEnum;
   DeclarationLine: Integer;
@@ -130,9 +130,9 @@ begin
   FClassNodes.Add(Result);
 end;
 
-function TFunctionTreeParser.CreateFunctionTreeNode(
+function TTreeParser.CreateFunctionTreeNode(
   FunctionName: String;
-  FunctionType: TFunctionTypeEnum;
+  FunctionType: TMethodTypeEnum;
   Visibility: TVisibilityEnum;
   DeclarationLine: Integer = 1;
   ImplementationLine: Integer = 1): TMethodTreeNode;
@@ -148,7 +148,7 @@ begin
   Inc(FIDKeyCount);
 end;
 
-class function TFunctionTreeParser.GetFunctionTreeVisibility(
+class function TTreeParser.GetFunctionTreeVisibility(
   SyntaxNodeType: TSyntaxNodeType): TVisibilityEnum;
 begin
   case SyntaxNodeType of
@@ -163,7 +163,7 @@ begin
   end;
 end;
 
-class function TFunctionTreeParser.GetMethodType(SyntaxNode: TSyntaxNode): TFunctionTypeEnum;
+class function TTreeParser.GetMethodType(SyntaxNode: TSyntaxNode): TMethodTypeEnum;
 var
   Kind: String;
   IsClass: String;
@@ -194,7 +194,7 @@ begin
   end;
 end;
 
-procedure TFunctionTreeParser.ParseFromDelphiAST(SyntaxNode: TSyntaxNode);
+procedure TTreeParser.ParseFromDelphiAST(SyntaxNode: TSyntaxNode);
 begin
   FRootSyntaxNode := SyntaxNode;
   PopulateClassAndMethodList;
@@ -202,7 +202,7 @@ begin
   FIsLoaded := True;
 end;
 
-procedure TFunctionTreeParser.ParseFromProjectIndex(ProjectIndex: TProjectIndexer);
+procedure TTreeParser.ParseFromProjectIndex(ProjectIndex: TProjectIndexer);
 var
   Index: Integer;
 begin
@@ -213,7 +213,7 @@ begin
   end;
 end;
 
-procedure TFunctionTreeParser.PopulateClassAndMethodList;
+procedure TTreeParser.PopulateClassAndMethodList;
 var
   InterfaceNode: TSyntaxNode;
   ChildNode: TSyntaxNode;
@@ -238,7 +238,7 @@ begin
   end;
 end;
 
-function TFunctionTreeParser.ProcessTypeDeclaration(
+function TTreeParser.ProcessTypeDeclaration(
   TypeDeclarationNode: TSyntaxNode;
   OwnerClassNode: TClassTreeNode
 ): TClassTreeNode;
@@ -296,7 +296,7 @@ begin
   end;
 end;
 
-procedure TFunctionTreeParser.ProcessClassMethodListByVisibility(
+procedure TTreeParser.ProcessClassMethodListByVisibility(
   ClassTreeNode: TClassTreeNode;
   SyntaxNode: TSyntaxNode);
 var
@@ -327,7 +327,7 @@ begin
   end;
 end;
 
-procedure TFunctionTreeParser.PopulateMethodImplementation;
+procedure TTreeParser.PopulateMethodImplementation;
 var
   ImplementationNode: TSyntaxNode;
   MethodIteration: TSyntaxNode;
@@ -394,7 +394,7 @@ begin
   FreeAndNil(MethodNameList);
 end;
 
-function TFunctionTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode;
+function TTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode;
 
   function GetClassNodeRecursively(
     CurrentClassNode: TClassTreeNode;
@@ -445,7 +445,7 @@ begin
   end;
 end;
 
-procedure TFunctionTreeParser.ProcessMethod(
+procedure TTreeParser.ProcessMethod(
   ClassNode: TClassTreeNode;
 
   // small tree method node
@@ -468,7 +468,7 @@ begin
   RecurseAddCallMethod(ClassNode, MethodNode, StatementsSyntaxNode);
 end;
 
-procedure TFunctionTreeParser.RecurseAddCallMethod(
+procedure TTreeParser.RecurseAddCallMethod(
   ThisClassNode: TClassTreeNode;
   SelectedMethodNode: TMethodTreeNode;
   // Method content (big tree statements node)
@@ -516,6 +516,7 @@ procedure TFunctionTreeParser.RecurseAddCallMethod(
               ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
 
               if Assigned(ResultMethodVal) then begin
+                ResultMethodVal.ClassNodeName := ClassNodeItem.ClassNodeName;
                 FoundMethodNode := ResultMethodVal;
                 Break;
               end;
@@ -555,7 +556,7 @@ begin
   end;
 end;
 
-procedure TFunctionTreeParser.ClearTree;
+procedure TTreeParser.ClearTree;
 var
   IterationUncatered: TSyntaxNode;
 begin
@@ -568,7 +569,7 @@ begin
   FInFileClassList.Clear;
 end;
 
-function TFunctionTreeParser.GetUnusedPrivateMethods: TList<TMethodTreeNode>;
+function TTreeParser.GetUnusedPrivateMethods: TList<TMethodTreeNode>;
 var
   SelectedClassTreeNode: TClassTreeNode;
   SelectedMethodTreeNode: TMethodTreeNode;

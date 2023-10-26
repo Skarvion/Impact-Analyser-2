@@ -3,8 +3,8 @@ program ImpactAnalyser;
 uses
   Vcl.Forms,
   FImpactAnalysers in 'FImpactAnalysers.pas' {ImpactAnalyserForm},
-  FunctionTreeNodes in 'FunctionTreeNodes.pas',
-  FunctionTreeParsers in 'FunctionTreeParsers.pas',
+  MethodTreeNodes in 'MethodTreeNodes.pas',
+  TreeParsers in 'TreeParsers.pas',
   ClassTreeNodes in 'ClassTreeNodes.pas',
   MethodAttributes in 'MethodAttributes.pas';
 

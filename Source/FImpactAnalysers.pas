@@ -5,8 +5,8 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Menus
-  , FunctionTreeParsers
-  , FunctionTreeNodes, Vcl.ExtCtrls
+  , TreeParsers
+  , MethodTreeNodes, Vcl.ExtCtrls
   , ClassTreeNodes, Vcl.Grids
   , DelphiAST.ProjectIndexer
   , DelphiAST.Classes
@@ -79,7 +79,7 @@ type
     FOnlyShowPublicMethod: Boolean;
     FGenerateASTXML: Boolean;
     FFileName: String;
-    FFunctionTreeParser: TFunctionTreeParser;
+    FTreeParser: TTreeParser;
 
     FIndexer: TProjectIndexer;
 
@@ -169,7 +169,7 @@ var
   FileSelector: TFileOpenDialog;
   Index: Integer;
 begin
-  FFunctionTreeParser.ClearTree;
+  FTreeParser.ClearTree;
 
   FIndexer := TProjectIndexer.Create;
   FileSelector := TFileOpenDialog.Create(Self);
@@ -181,7 +181,7 @@ begin
   end;
 
 
-  FFunctionTreeParser.ParseFromProjectIndex(FIndexer);
+  FTreeParser.ParseFromProjectIndex(FIndexer);
 
   DisplayTree;
 
@@ -196,7 +196,7 @@ var
   MethodNode: TMethodTreeNode;
   OutputMessage: String;
 begin
-  UnusedPrivateMethods := FFunctionTreeParser.GetUnusedPrivateMethods;
+  UnusedPrivateMethods := FTreeParser.GetUnusedPrivateMethods;
   OutputMessage := '';
   for MethodNode in UnusedPrivateMethods do begin
     OutputMessage := OutputMessage + '- ' + MethodNode.FunctionName + sLineBreak;
@@ -219,7 +219,6 @@ var
   SyntaxTree: TSyntaxNode;
 begin
   try
-
     // read from code file
     Stream := TStringStream.Create;
     try
@@ -250,7 +249,7 @@ begin
       end;
 
       // Build small tree
-      FFunctionTreeParser.ParseFromDelphiAST(SyntaxTree);
+      FTreeParser.ParseFromDelphiAST(SyntaxTree);
 
 
       DisplayTree;
@@ -275,12 +274,12 @@ var
   ClassNode: TClassTreeNode;
 begin
   TreeViewClassTree.Items.Clear;
-  if not FFunctionTreeParser.IsLoaded then begin
+  if not FTreeParser.IsLoaded then begin
     Exit;
   end;
 
   // Use FunctionTreeParser's InFileClass List to display each node on tree
-  for ClassNode in FFunctionTreeParser.InFileClassList do begin
+  for ClassNode in FTreeParser.InFileClassList do begin
     DisplayClassNodeOnTree(ClassNode);
   end;
 end;
@@ -332,7 +331,7 @@ var
 begin
   // Add this method as a child of the TTree class node
   FormMethodTreeNode := TreeViewClassTree.Items.AddChildObject(
-    ParentTreeNode, MethodNode.FunctionName, MethodNode);
+    ParentTreeNode, MethodNode.ClassNodeName + '.' + MethodNode.FunctionName, MethodNode);
 
   for MethodNodeCalledWithinThisMethodNode in MethodNode.MethodsCalledWithinThisMethod do begin
     DisplayMethodNodeOnTreeRecursive(FormMethodTreeNode, MethodNodeCalledWithinThisMethodNode);
@@ -383,7 +382,7 @@ procedure TImpactAnalyserForm.TreeViewClassTreeChange(Sender: TObject; Node: TTr
 var
   DataObject: TObject;
 begin
-  if (not FFunctionTreeParser.IsLoaded) or (not Assigned(Node)) then begin
+  if (not FTreeParser.IsLoaded) or (not Assigned(Node)) then begin
     HideDisplay;
   end;
 
@@ -676,14 +675,14 @@ end;
 
 procedure TImpactAnalyserForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  FreeAndNil(FFunctionTreeParser);
+  FreeAndNil(FTreeParser);
 end;
 
 //______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.FormShow(Sender: TObject);
 begin
-  FFunctionTreeParser := TFunctionTreeParser.Create;
+  FTreeParser := TTreeParser.Create;
   HideDisplay;
   FFileName := '';
   FGenerateASTXML := False;

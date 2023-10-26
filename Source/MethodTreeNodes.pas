@@ -1,4 +1,4 @@
-unit FunctionTreeNodes;
+unit MethodTreeNodes;
 
 interface
 
@@ -8,7 +8,7 @@ uses
 
 type
 
-  TFunctionTypeEnum = (
+  TMethodTypeEnum = (
     ftNone,
     ftClassFunction,
     ftFunction,
@@ -29,7 +29,7 @@ type
 
   TMethodTreeNode = class(TObject)
   public const
-    C_FunctionTypeString: array [TFunctionTypeEnum] of String = (
+    C_FunctionTypeString: array [TMethodTypeEnum] of String = (
       'NONE',
       'CLASS FUNCTION',
       'FUNCTION',
@@ -49,11 +49,13 @@ type
   private
     FID: Integer;
     FFunctionName: String;
-    FFunctionType: TFunctionTypeEnum;
+    FFunctionType: TMethodTypeEnum;
     FVisibility: TVisibilityEnum;
 
     FDeclarationLine: Integer;
     FImplementationLine: Integer;
+
+    FClassNodeName: String;
 
     FMethodsCalledWithinThisMethod: TList<TMethodTreeNode>;
     FCallerList: TList<TMethodTreeNode>;
@@ -69,7 +71,7 @@ type
   public
     constructor Create(
       FunctionName: String;
-      FunctionType: TFunctionTypeEnum;
+      FunctionType: TMethodTypeEnum;
       Visibility: TVisibilityEnum;
       DeclarationLine: Integer = 1;
       ImplementationLine: Integer = 1); overload;
@@ -80,7 +82,7 @@ type
 
     property ID: Integer read FID write FID;
     property FunctionName: String read FFunctionName write FFunctionName;
-    property FunctionType: TFunctionTypeEnum read FFunctionType write FFunctionType;
+    property FunctionType: TMethodTypeEnum read FFunctionType write FFunctionType;
     property Visibility: TVisibilityEnum read FVisibility write FVisibility;
     property VisibilityAsString: String read GetVisibilityAsString;
     property DeclarationLine: Integer read FDeclarationLine write FDeclarationLine;
@@ -89,7 +91,7 @@ type
     property CallerList: TList<TMethodTreeNode> read FCallerList;
     property HasRecursion: Boolean read FHasRecursion;
     property Selected: Boolean read FSelected write FSelected;
-
+    property ClassNodeName: String read FClassNodeName write FClassNodeName;
   end;
 
 implementation
@@ -102,7 +104,7 @@ uses
 
 constructor TMethodTreeNode.Create(
   FunctionName: String;
-  FunctionType: TFunctionTypeEnum;
+  FunctionType: TMethodTypeEnum;
   Visibility: TVisibilityEnum;
   DeclarationLine: Integer = 1;
   ImplementationLine: Integer = 1);
