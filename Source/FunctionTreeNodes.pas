@@ -55,7 +55,7 @@ type
     FDeclarationLine: Integer;
     FImplementationLine: Integer;
 
-    FMethodCallList: TList<TMethodTreeNode>;
+    FMethodsCalledWithinThisMethod: TList<TMethodTreeNode>;
     FCallerList: TList<TMethodTreeNode>;
 
     FHasRecursion: Boolean;
@@ -76,7 +76,7 @@ type
     constructor Create; overload;
     destructor Destroy; override;
 
-    procedure AddMethodCall(MethodNode: TMethodTreeNode);
+    procedure AddMethodCall(CallingMethodNode: TMethodTreeNode);
 
     property ID: Integer read FID write FID;
     property FunctionName: String read FFunctionName write FFunctionName;
@@ -85,7 +85,7 @@ type
     property VisibilityAsString: String read GetVisibilityAsString;
     property DeclarationLine: Integer read FDeclarationLine write FDeclarationLine;
     property ImplementationLine: Integer read FImplementationLine write FImplementationLine;
-    property MethodCallList: TList<TMethodTreeNode> read FMethodCallList;
+    property MethodsCalledWithinThisMethod: TList<TMethodTreeNode> read FMethodsCalledWithinThisMethod;
     property CallerList: TList<TMethodTreeNode> read FCallerList;
     property HasRecursion: Boolean read FHasRecursion;
     property Selected: Boolean read FSelected write FSelected;
@@ -110,7 +110,7 @@ begin
   FFunctionName := FunctionName;
   FFunctionType := FunctionType;
   FVisibility := Visibility;
-  FMethodCallList := TList<TMethodTreeNode>.Create;
+  FMethodsCalledWithinThisMethod := TList<TMethodTreeNode>.Create;
   FCallerList := TList<TMethodTreeNode>.Create;
   FHasRecursion := False;
 end;
@@ -123,18 +123,18 @@ end;
 destructor TMethodTreeNode.Destroy;
 begin
   FreeAndNil(FCallerList);
-  FreeAndNil(FMethodCallList);
+  FreeAndNil(FMethodsCalledWithinThisMethod);
   inherited;
 end;
 
-procedure TMethodTreeNode.AddMethodCall(MethodNode: TMethodTreeNode);
+procedure TMethodTreeNode.AddMethodCall(CallingMethodNode: TMethodTreeNode);
 begin
-  if HasCallerRecursion(MethodNode) then begin
-    MethodNode.FHasRecursion := True;
+  if HasCallerRecursion(CallingMethodNode) then begin
+    CallingMethodNode.FHasRecursion := True;
   end
   else begin
-    MethodNode.FCallerList.Add(Self);
-    FMethodCallList.Add(MethodNode);
+    CallingMethodNode.FCallerList.Add(Self);
+    FMethodsCalledWithinThisMethod.Add(CallingMethodNode);
   end;
 end;
 

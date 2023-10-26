@@ -334,7 +334,7 @@ begin
   FormMethodTreeNode := TreeViewClassTree.Items.AddChildObject(
     ParentTreeNode, MethodNode.FunctionName, MethodNode);
 
-  for MethodNodeCalledWithinThisMethodNode in MethodNode.MethodCallList do begin
+  for MethodNodeCalledWithinThisMethodNode in MethodNode.MethodsCalledWithinThisMethod do begin
     DisplayMethodNodeOnTreeRecursive(FormMethodTreeNode, MethodNodeCalledWithinThisMethodNode);
   end;
 end;
