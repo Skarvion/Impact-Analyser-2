@@ -9,6 +9,7 @@ uses
   , FunctionTreeNodes, Vcl.ExtCtrls
   , ClassTreeNodes, Vcl.Grids
   , DelphiAST.ProjectIndexer
+  , DelphiAST.Classes
   ;
 
 type
@@ -56,6 +57,7 @@ type
     SplitterAnalysis: TSplitter;
     MemoEditor: TRichEdit;
     MenuItemOpenDirectory: TMenuItem;
+
     procedure MemoEditorKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MemoEditorClick(Sender: TObject);
     procedure MenuItemOpenClick(Sender: TObject);
@@ -66,6 +68,7 @@ type
     procedure MenuItemOnlyShowPublicMethodsClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure ButtonReloadFrom(Sender: TObject);
+    procedure SearchByClick(Sender: TObject);
     procedure SearchInTree(Sender: TObject);
     procedure EditSearchKeyPress(Sender: TObject; var Key: Char);
     procedure MenuItemGenerateASTXMLClick(Sender: TObject);
@@ -79,6 +82,8 @@ type
     FFunctionTreeParser: TFunctionTreeParser;
 
     FIndexer: TProjectIndexer;
+
+    FSyntaxTree: TSyntaxNode;
 
     procedure DisplayCursorPositionInStatus;
     procedure UpdateCursorPosition(LineNumber: Integer);
@@ -108,16 +113,16 @@ var
 implementation
 
 uses
-  IOUtils
-  , DelphiAST
-  , DelphiAST.Classes
+
+    DelphiAST.Consts
   , DelphiAST.Writer
   , SimpleParser.Lexer.Types
   , DelphiAST.SimpleParserEx
   , StrUtils
   , System.Generics.Collections
   , Vcl.FileCtrl
-  , DelphiAST.Consts
+  , IOUtils
+  , DelphiAST
   ;
 
 {$R *.dfm}
@@ -233,6 +238,7 @@ begin
       Builder.IncludeHandler := nil;
 
       SyntaxTree := Builder.Run(Stream);
+      FSyntaxTree := SyntaxTree;
 
       if FGenerateASTXML then begin
         MemoEditor.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
@@ -251,7 +257,7 @@ begin
     Stream.Free;
   end;
 
-  FreeAndNil(SyntaxTree);
+  //FreeAndNil(SyntaxTree);
 end;
 
 //______________________________________________________________________________________________________________________
@@ -400,6 +406,39 @@ end;
 
 //______________________________________________________________________________________________________________________
 
+procedure TImpactAnalyserForm.SearchByClick(Sender: TObject);
+var
+  SearchNames: TStringList;
+  ClassName: String;
+  MethodName: String;
+  InitialSelectedTreeNode: TTreeNode;
+  SelectedTreeNode: TTreeNode;
+  IsFromStart: Boolean;
+  Iteration: TSyntaxNode;
+begin
+
+  SearchNames := TStringList.Create;
+  SearchNames.Delimiter := '.';
+  SearchNames.DelimitedText := EditSearch.Text;
+  LabelNameCaption.Caption := 'aaaaaa';
+
+
+//  for Iteration in FSyntaxTree.ChildNodes do begin
+//     LabelNameCaption.Caption := Iteration.Typ;
+//
+//  end;
+
+  //FSyntaxTree.ChildNodes
+
+
+
+
+  //SearchNames.Free;
+
+end;
+
+//______________________________________________________________________________________________________________________
+
 //@TODO: I'm not proud of this method
 procedure TImpactAnalyserForm.SearchInTree(Sender: TObject);
 var
@@ -409,6 +448,7 @@ var
   InitialSelectedTreeNode: TTreeNode;
   SelectedTreeNode: TTreeNode;
   IsFromStart: Boolean;
+  aNode: TTreeNode;
 begin
   TreeViewClassTree.SetFocus;
   if TreeViewClassTree.Items.Count = 0 then begin
@@ -436,38 +476,70 @@ begin
   end;
   SearchNames.Free;
 
-  InitialSelectedTreeNode := TreeViewClassTree.Selected;
-  IsFromStart := True;
-  if Assigned(InitialSelectedTreeNode) then begin
-    SelectedTreeNode := InitialSelectedTreeNode.GetNext;
-    IsFromStart := False;
-  end
-  else begin
-    SelectedTreeNode := TreeViewClassTree.Items.GetFirstNode;
-  end;
+  InitialSelectedTreeNode := TreeViewClassTree.TopItem;
 
-  while Assigned(SelectedTreeNode) do begin
-    if ContainsStr(SelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
-      SelectedTreeNode.Selected := True;
-      TreeViewClassTree.Refresh;
-      Exit;
+  while Assigned(InitialSelectedTreeNode) do begin
+    if ContainsStr(InitialSelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
+
+      (TObject(InitialSelectedTreeNode.Data) as TMethodTreeNode).Selected := True;
+      InitialSelectedTreeNode.Expanded := true;
+
+
+      aNode := InitialSelectedTreeNode.Parent;
+      while aNode <> nil do begin
+        InitialSelectedTreeNode.Parent.Expanded := True;
+        aNode := aNode.Parent;
+      end;
     end;
-    SelectedTreeNode := SelectedTreeNode.GetNext;
+    InitialSelectedTreeNode := InitialSelectedTreeNode.GetNext;
   end;
 
-  if IsFromStart then begin
-    Exit;
-  end;
+  TreeViewClassTree.Refresh;
 
-  SelectedTreeNode := TreeViewClassTree.Items.GetFirstNode;
-  while SelectedTreeNode <> InitialSelectedTreeNode do begin
-    if ContainsStr(SelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
-      SelectedTreeNode.Selected := True;
-      TreeViewClassTree.Refresh;
-      Exit;
-    end;
-    SelectedTreeNode := SelectedTreeNode.GetNext;
-  end;
+
+//    aNode := Node.Parent;
+//    aNode.Expanded := true;
+//
+//
+//    while aNode <> nil do begin
+//      aNode.Expanded := true;
+//      aNode := Node.Parent;
+//    end;
+
+//
+//
+//  IsFromStart := True;
+////  if Assigned(InitialSelectedTreeNode) then begin
+//    SelectedTreeNode := InitialSelectedTreeNode.GetNext;
+////    IsFromStart := False;
+////  end
+////  else begin
+////    SelectedTreeNode := TreeViewClassTree.Items.GetFirstNode;
+////  end;
+//
+//  while Assigned(SelectedTreeNode) do begin
+//    if ContainsStr(SelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
+//      SelectedTreeNode.Selected := True;
+//      Exit;
+//    end;
+//    SelectedTreeNode := SelectedTreeNode.GetNext;
+//  end;
+//
+//  TreeViewClassTree.Refresh;
+//
+//  if IsFromStart then begin
+//    Exit;
+//  end;
+//
+//  SelectedTreeNode := TreeViewClassTree.Items.GetFirstNode;
+//  while SelectedTreeNode <> InitialSelectedTreeNode do begin
+//    if ContainsStr(SelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
+//      SelectedTreeNode.Selected := True;
+//      TreeViewClassTree.Refresh;
+//      Exit;
+//    end;
+//    SelectedTreeNode := SelectedTreeNode.GetNext;
+//  end;
 end;
 
 //______________________________________________________________________________________________________________________
@@ -547,6 +619,7 @@ var
   DataObject: TObject;
   MethodNode: TMethodTreeNode;
   SelectedColor: TColor;
+  aNode : TTreeNode;
 begin
   DataObject := TObject(Node.Data);
   SelectedColor := clBlack;
@@ -564,11 +637,22 @@ begin
       vPublic: SelectedColor := clGreen;
       vPublished: SelectedColor := clPurple;
     end;
+
+
+    if MethodNode.Selected then begin
+       Sender.Canvas.Brush.Color := cl3DLight;
+       Sender.Canvas.FillRect(Node.DisplayRect(True));
+    end;
+
+
     Sender.Canvas.Font.Color := SelectedColor;
 
     if MethodNode.FunctionType in [ftClassFunction, ftClassProcedure] then begin
       Sender.Canvas.Font.Style := [fsUnderline];
     end;
+
+
+
   end;
 end;
 

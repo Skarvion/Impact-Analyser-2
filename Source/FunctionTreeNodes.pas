@@ -60,6 +60,8 @@ type
 
     FHasRecursion: Boolean;
 
+    FSelected: Boolean;
+
     function HasCallerRecursion(MethodNode: TMethodTreeNode): Boolean;
 
     function GetVisibilityAsString: String;
@@ -86,6 +88,8 @@ type
     property MethodCallList: TList<TMethodTreeNode> read FMethodCallList;
     property CallerList: TList<TMethodTreeNode> read FCallerList;
     property HasRecursion: Boolean read FHasRecursion;
+    property Selected: Boolean read FSelected write FSelected;
+
   end;
 
 implementation
