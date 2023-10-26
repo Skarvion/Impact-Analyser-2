@@ -182,20 +182,21 @@ end;
 
 procedure TFunctionTreeParser.PopulateClassAndMethodList;
 var
-  TypeSectionNode: TSyntaxNode;
-  Iteration: TSyntaxNode;
+  InterfaceNode: TSyntaxNode;
+  ChildNode: TSyntaxNode;
+  TypeChildNode: TSyntaxNode;
 begin
-  TypeSectionNode := FRootSyntaxNode.FindNode([ntInterface, ntTypeSection]);
-  if not Assigned(TypeSectionNode) then begin
-    raise Exception.Create('Type section is empty, something must be wrong');
-  end;
+  InterfaceNode := FRootSyntaxNode.FindNode(ntInterface);
+  Assert(Assigned(InterfaceNode), 'Interface node is not found, something must be wrong');
 
-  for Iteration in TypeSectionNode.ChildNodes do begin
-    if Iteration.Typ <> ntTypeDecl then begin
-      Continue;
+  for ChildNode in InterfaceNode.ChildNodes do begin
+    if ChildNode.Typ = ntTypeSection then begin
+      for TypeChildNode in ChildNode.ChildNodes do begin
+        if TypeChildNode.Typ = ntTypeDecl then begin
+          ProcessTypeDeclaration(TypeChildNode);
+        end;
+      end;
     end;
-
-    ProcessTypeDeclaration(Iteration);
   end;
 end;
 
