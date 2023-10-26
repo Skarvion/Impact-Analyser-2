@@ -1,9 +1,9 @@
 object ImpactAnalyserForm: TImpactAnalyserForm
   Left = 0
   Top = 0
-  Caption = 'Impact Analyser'
-  ClientHeight = 757
-  ClientWidth = 1245
+  Caption = ']'
+  ClientHeight = 719
+  ClientWidth = 1237
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -11,119 +11,48 @@ object ImpactAnalyserForm: TImpactAnalyserForm
   Font.Name = 'Tahoma'
   Font.Style = []
   Menu = MainMenu
-  OldCreateOrder = False
   OnClose = FormClose
   OnShow = FormShow
-  PixelsPerInch = 96
   TextHeight = 13
-  object Label10: TLabel
-    Left = 182
-    Top = 142
-    Width = 160
-    Height = 19
-    Caption = '#DECLARATION LINE'
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clWindowText
-    Font.Height = -16
-    Font.Name = 'Tahoma'
-    Font.Style = []
-    ParentFont = False
-  end
-  object Label11: TLabel
-    Left = 22
-    Top = 142
-    Width = 113
-    Height = 19
-    Caption = 'Declaration Line'
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clWindowText
-    Font.Height = -16
-    Font.Name = 'Tahoma'
-    Font.Style = []
-    ParentFont = False
+  object SplitterMain: TSplitter
+    Left = 617
+    Top = 0
+    Height = 700
   end
   object StatusBar: TStatusBar
     Left = 0
-    Top = 738
-    Width = 1245
+    Top = 700
+    Width = 1237
     Height = 19
     Panels = <>
     SimplePanel = True
   end
-  object GridPanel1: TGridPanel
-    Left = 0
+  object PanelCodeAnalysisContainer: TPanel
+    Left = 620
     Top = 0
-    Width = 1245
-    Height = 738
+    Width = 617
+    Height = 700
     Align = alClient
-    Caption = 'GridPanel1'
-    ColumnCollection = <
-      item
-        Value = 58.333333333333340000
-      end
-      item
-        Value = 41.666666666666660000
-      end>
-    ControlCollection = <
-      item
-        Column = 0
-        Control = MemoEditor
-        Row = 0
-        RowSpan = 2
-      end
-      item
-        Column = 1
-        Control = Panel1
-        Row = 1
-      end
-      item
-        Column = 1
-        Control = PanelTreeViewContainer
-        Row = 0
-      end>
-    RowCollection = <
-      item
-        Value = 100.000000000000000000
-      end
-      item
-        SizeStyle = ssAbsolute
-        Value = 200.000000000000000000
-      end
-      item
-        SizeStyle = ssAuto
-      end>
-    TabOrder = 0
-    object MemoEditor: TMemo
+    Caption = 'PanelCodeAnalysisContainer'
+    TabOrder = 1
+    object SplitterAnalysis: TSplitter
       Left = 1
-      Top = 1
-      Width = 725
-      Height = 736
-      Align = alClient
-      Font.Charset = ANSI_CHARSET
-      Font.Color = clBlack
-      Font.Height = -16
-      Font.Name = 'Consolas'
-      Font.Style = []
-      Lines.Strings = (
-        '')
-      ParentFont = False
-      ScrollBars = ssBoth
-      TabOrder = 0
-      OnClick = MemoEditorClick
-      OnKeyUp = MemoEditorKeyUp
+      Top = 336
+      Width = 615
+      Height = 3
+      Cursor = crVSplit
+      Align = alBottom
     end
-    object Panel1: TPanel
-      Left = 726
-      Top = 537
-      Width = 518
-      Height = 200
-      Align = alClient
-      Alignment = taLeftJustify
-      Anchors = []
-      TabOrder = 2
+    object PanelNodeAttributesContainer: TPanel
+      Left = 1
+      Top = 339
+      Width = 615
+      Height = 360
+      Align = alBottom
+      TabOrder = 0
       DesignSize = (
-        518
-        200)
+        615
+        360)
       object LabelIDCaption: TLabel
         Left = 14
         Top = 28
@@ -320,7 +249,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         ParentFont = False
       end
       object Label1: TLabel
-        Left = 350
+        Left = 433
         Top = 6
         Width = 75
         Height = 16
@@ -334,7 +263,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         ParentFont = False
       end
       object ButtonReloadFile: TButton
-        Left = 427
+        Left = 510
         Top = 25
         Width = 75
         Height = 25
@@ -344,7 +273,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         OnClick = ButtonReloadFrom
       end
       object ButtonReloadEditArea: TButton
-        Left = 346
+        Left = 429
         Top = 25
         Width = 75
         Height = 25
@@ -355,18 +284,17 @@ object ImpactAnalyserForm: TImpactAnalyserForm
       end
     end
     object PanelTreeViewContainer: TPanel
-      Left = 726
+      Left = 1
       Top = 1
-      Width = 518
-      Height = 536
+      Width = 615
+      Height = 335
       Align = alClient
-      Alignment = taLeftJustify
       TabOrder = 1
       object TreeViewClassTree: TTreeView
         Left = 1
-        Top = 21
-        Width = 516
-        Height = 514
+        Top = 25
+        Width = 613
+        Height = 309
         Align = alClient
         Font.Charset = DEFAULT_CHARSET
         Font.Color = clWindowText
@@ -380,20 +308,19 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         OnCustomDrawItem = TreeViewClassTreeCustomDrawItem
         OnKeyPress = EditSearchKeyPress
       end
-      object PanelFlowPanelPanel2: TPanel
+      object PanelSeachContainer: TPanel
         Left = 1
         Top = 1
-        Width = 516
-        Height = 20
+        Width = 613
+        Height = 24
         Align = alTop
-        Caption = 'PanelFlowPanelPanel2'
         ParentBackground = False
         TabOrder = 1
         object EditSearch: TEdit
           Left = 1
           Top = 1
-          Width = 414
-          Height = 18
+          Width = 511
+          Height = 22
           Align = alClient
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clWindowText
@@ -406,10 +333,10 @@ object ImpactAnalyserForm: TImpactAnalyserForm
           OnKeyPress = EditSearchKeyPress
         end
         object ButtonSearch: TButton
-          Left = 415
+          Left = 512
           Top = 1
           Width = 100
-          Height = 18
+          Height = 22
           Align = alRight
           Caption = 'Search'
           Font.Charset = DEFAULT_CHARSET
@@ -424,14 +351,47 @@ object ImpactAnalyserForm: TImpactAnalyserForm
       end
     end
   end
+  object PanelCodeContentContainer: TPanel
+    Left = 0
+    Top = 0
+    Width = 617
+    Height = 700
+    Align = alLeft
+    Caption = 'PanelCodeContentContainer'
+    TabOrder = 2
+    object MemoEditor: TRichEdit
+      Left = 1
+      Top = 1
+      Width = 615
+      Height = 698
+      Align = alClient
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Tahoma'
+      Font.Style = []
+      HideSelection = False
+      HideScrollBars = False
+      Lines.Strings = (
+        'MemoEditor')
+      ParentFont = False
+      ReadOnly = True
+      ScrollBars = ssBoth
+      TabOrder = 0
+    end
+  end
   object MainMenu: TMainMenu
-    Left = 16
-    Top = 16
+    Left = 64
+    Top = 616
     object MenuItemFile: TMenuItem
       Caption = 'File'
       object MenuItemOpen: TMenuItem
         Caption = 'Open...'
         OnClick = MenuItemOpenClick
+      end
+      object MenuItemOpenDirectory: TMenuItem
+        Caption = 'Open Directory...'
+        OnClick = MenuItemOpenDirectoryClick
       end
     end
     object MenuItemView: TMenuItem
@@ -457,7 +417,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
     end
   end
   object OpenDialog: TOpenDialog
-    Left = 64
-    Top = 16
+    Left = 176
+    Top = 616
   end
 end

@@ -7,22 +7,21 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Menus
   , FunctionTreeParsers
   , FunctionTreeNodes, Vcl.ExtCtrls
-  , ClassTreeNodes
+  , ClassTreeNodes, Vcl.Grids
+  , DelphiAST.ProjectIndexer
   ;
 
 type
   TReloadFrom = (rfFromEditArea, rfFromFile);
 
   TImpactAnalyserForm = class(TForm)
-    MemoEditor: TMemo;
     StatusBar: TStatusBar;
     MainMenu: TMainMenu;
     MenuItemFile: TMenuItem;
     MenuItemOpen: TMenuItem;
     OpenDialog: TOpenDialog;
-    GridPanel1: TGridPanel;
     LabelIDCaption: TLabel;
-    Panel1: TPanel;
+    PanelNodeAttributesContainer: TPanel;
     LabelNameCaption: TLabel;
     LabelTypeCaption: TLabel;
     LabelID: TLabel;
@@ -31,8 +30,6 @@ type
     LabelDeclarationLineCaption: TLabel;
     LabelNodeType: TLabel;
     LabelDeclarationLine: TLabel;
-    Label10: TLabel;
-    Label11: TLabel;
     LabelExtraCaption1: TLabel;
     LabelExtraCaption2: TLabel;
     LabelExtraData1: TLabel;
@@ -46,13 +43,19 @@ type
     Label1: TLabel;
     PanelTreeViewContainer: TPanel;
     TreeViewClassTree: TTreeView;
-    PanelFlowPanelPanel2: TPanel;
+    PanelSeachContainer: TPanel;
     EditSearch: TEdit;
     ButtonSearch: TButton;
     MenuItemGenerateASTXML: TMenuItem;
     MenuItemAnalyse: TMenuItem;
     MenuItemUnusedPrivateMethods: TMenuItem;
     MenuItemUncalledPublicMethods: TMenuItem;
+    PanelCodeContentContainer: TPanel;
+    PanelCodeAnalysisContainer: TPanel;
+    SplitterMain: TSplitter;
+    SplitterAnalysis: TSplitter;
+    MemoEditor: TRichEdit;
+    MenuItemOpenDirectory: TMenuItem;
     procedure MemoEditorKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MemoEditorClick(Sender: TObject);
     procedure MenuItemOpenClick(Sender: TObject);
@@ -67,6 +70,7 @@ type
     procedure EditSearchKeyPress(Sender: TObject; var Key: Char);
     procedure MenuItemGenerateASTXMLClick(Sender: TObject);
     procedure MenuItemUnusedPrivateMethodsClick(Sender: TObject);
+    procedure MenuItemOpenDirectoryClick(Sender: TObject);
 
   private
     FOnlyShowPublicMethod: Boolean;
@@ -74,8 +78,10 @@ type
     FFileName: String;
     FFunctionTreeParser: TFunctionTreeParser;
 
+    FIndexer: TProjectIndexer;
+
     procedure DisplayCursorPositionInStatus;
-    procedure UpdateCursorPosition(Line: Integer);
+    procedure UpdateCursorPosition(LineNumber: Integer);
 
     procedure Parse(ReloadFrom: TReloadFrom);
 
@@ -88,6 +94,7 @@ type
 
     procedure DisplayClassNodeInformation(ClassNode: TClassTreeNode);
     procedure DisplayMethodNodeInformation(MethodNode: TMethodTreeNode);
+
     procedure HideDisplay;
   public
     { Public declarations }
@@ -95,6 +102,8 @@ type
 
 var
   ImpactAnalyserForm: TImpactAnalyserForm;
+
+//______________________________________________________________________________________________________________________
 
 implementation
 
@@ -107,6 +116,8 @@ uses
   , DelphiAST.SimpleParserEx
   , StrUtils
   , System.Generics.Collections
+  , Vcl.FileCtrl
+  , DelphiAST.Consts
   ;
 
 {$R *.dfm}
@@ -121,6 +132,8 @@ begin
   FGenerateASTXML := MenuItem.Checked;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.MenuItemOnlyShowPublicMethodsClick(Sender: TObject);
 var
   MenuItem: TMenuItem;
@@ -132,6 +145,8 @@ begin
   DisplayTree;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.MenuItemOpenClick(Sender: TObject);
 begin
   if OpenDialog.Execute then begin
@@ -140,6 +155,37 @@ begin
     Parse(rfFromFile);
   end;
 end;
+
+//______________________________________________________________________________________________________________________
+
+procedure TImpactAnalyserForm.MenuItemOpenDirectoryClick(Sender: TObject);
+var
+  FoundDirectory: Boolean;
+  FileSelector: TFileOpenDialog;
+  Index: Integer;
+begin
+  MemoEditor.Lines.Text := '';
+
+  FIndexer := TProjectIndexer.Create;
+  FileSelector := TFileOpenDialog.Create(Self);
+
+  if FileSelector.Execute then begin
+    FIndexer.Index(FileSelector.FileName);
+  end;
+
+  for Index := 0 to FIndexer.ParsedUnits.Count - 1 do begin
+    MemoEditor.Lines.Text := MemoEditor.Lines.Text +
+      (FIndexer.ParsedUnits[Index].Name + ' in ' + FIndexer.ParsedUnits[Index].Path);
+
+    MemoEditor.Lines.Text := MemoEditor.Lines.Text +
+      ' First child node type: ' + SyntaxNodeNames[FIndexer.ParsedUnits[Index].SyntaxTree.ChildNodes[0].Typ] +
+      ' Node Type: ' +  SyntaxNodeNames[FIndexer.ParsedUnits[Index].SyntaxTree.Typ];
+  end;
+
+  FreeAndNil(FileSelector);
+end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.MenuItemUnusedPrivateMethodsClick(Sender: TObject);
 var
@@ -160,6 +206,8 @@ begin
     ShowMessage(OutputMessage);
   end;
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.Parse(ReloadFrom: TReloadFrom);
 var
@@ -188,6 +236,8 @@ begin
 
       SyntaxTree := Builder.Run(Stream);
 
+//      SyntaxTree.Create();
+
       if FGenerateASTXML then begin
         MemoEditor.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
       end;
@@ -208,6 +258,8 @@ begin
   FreeAndNil(SyntaxTree);
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.DisplayTree;
 var
   Iteration: TClassTreeNode;
@@ -221,6 +273,8 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.EditSearchKeyPress(Sender: TObject; var Key: Char);
 begin
   if Ord(Key) = VK_RETURN then begin
@@ -228,6 +282,8 @@ begin
     SearchInTree(nil);
   end;
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.DisplayClassNodeOnTree(
   ClassNode: TClassTreeNode);
@@ -249,6 +305,8 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.DisplayMethodNodeOnTreeRecursive(
   ParentTreeNode: TTreeNode;
   MethodNode: TMethodTreeNode);
@@ -263,15 +321,21 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.MemoEditorClick(Sender: TObject);
 begin
   DisplayCursorPositionInStatus;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.MemoEditorKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
 begin
   DisplayCursorPositionInStatus;
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.DisplayCursorPositionInStatus;
 var
@@ -281,23 +345,21 @@ begin
   StatusBar.SimpleText := IntToStr(CursorCoordinate.Y + 1) + ' : ' + IntToStr(CursorCoordinate.X + 1);
 end;
 
-procedure TImpactAnalyserForm.UpdateCursorPosition(Line: Integer);
-const
-  C_TempOffset = 100;
+//______________________________________________________________________________________________________________________
+
+procedure TImpactAnalyserForm.UpdateCursorPosition(LineNumber: Integer);
 var
   CursorCoordinate: TPoint;
 begin
-  CursorCoordinate.X := 1;
-  CursorCoordinate.Y := Line + C_TempOffset;
+  CursorCoordinate.X := 0;
+  CursorCoordinate.Y := LineNumber - 1;
   MemoEditor.CaretPos := CursorCoordinate;
-  MemoEditor.SelLength := C_TempOffset;
-  CursorCoordinate.X := 1;
-  CursorCoordinate.Y := Line - 1;
-  MemoEditor.CaretPos := CursorCoordinate;
-  MemoEditor.SelLength := 1;
+  MemoEditor.SelLength := Length(MemoEditor.Lines[LineNumber - 1]);
 
   DisplayCursorPositionInStatus;
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.TreeViewClassTreeChange(Sender: TObject; Node: TTreeNode);
 var
@@ -319,6 +381,8 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.ButtonReloadFrom(Sender: TObject);
 var
   ReloadFrom: TReloadFrom;
@@ -332,6 +396,8 @@ begin
 
   Parse(ReloadFrom);
 end;
+
+//______________________________________________________________________________________________________________________
 
 //@TODO: I'm not proud of this method
 procedure TImpactAnalyserForm.SearchInTree(Sender: TObject);
@@ -403,6 +469,8 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.DisplayClassNodeInformation(ClassNode: TClassTreeNode);
 begin
   LabelNodeType.Caption := 'CLASS NODE';
@@ -422,6 +490,8 @@ begin
 
   UpdateCursorPosition(ClassNode.DeclarationLine);
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.DisplayMethodNodeInformation(MethodNode: TMethodTreeNode);
 begin
@@ -447,6 +517,8 @@ begin
   UpdateCursorPosition(MethodNode.ImplementationLine);
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.HideDisplay;
 begin
   LabelNodeType.Caption := 'NO SELECTED NODE';
@@ -462,6 +534,8 @@ begin
   LabelExtraData2.Visible := False;
   LabelExtraData3.Visible := False;
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.TreeViewClassTreeCustomDrawItem(
   Sender: TCustomTreeView;
@@ -497,10 +571,14 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   FreeAndNil(FFunctionTreeParser);
 end;
+
+//______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.FormShow(Sender: TObject);
 begin
@@ -509,6 +587,7 @@ begin
   FFileName := '';
   FGenerateASTXML := False;
   FOnlyShowPublicMethod := False;
+  MemoEditor.Lines.Text := '';
 end;
 
 end.
