@@ -12,6 +12,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
   Font.Style = []
   Menu = MainMenu
   OnClose = FormClose
+  OnMouseEnter = MenuItemOpenDirectoryClick
   OnShow = FormShow
   TextHeight = 13
   object SplitterMain: TSplitter
@@ -306,6 +307,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         TabOrder = 0
         OnChange = TreeViewClassTreeChange
         OnCustomDrawItem = TreeViewClassTreeCustomDrawItem
+        OnHint = TreeViewClassTreeHint
         OnKeyPress = EditSearchKeyPress
       end
       object PanelSeachContainer: TPanel

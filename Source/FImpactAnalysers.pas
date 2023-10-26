@@ -56,6 +56,9 @@ type
     SplitterAnalysis: TSplitter;
     MemoEditor: TRichEdit;
     MenuItemOpenDirectory: TMenuItem;
+
+
+
     procedure MemoEditorKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MemoEditorClick(Sender: TObject);
     procedure MenuItemOpenClick(Sender: TObject);
@@ -71,6 +74,7 @@ type
     procedure MenuItemGenerateASTXMLClick(Sender: TObject);
     procedure MenuItemUnusedPrivateMethodsClick(Sender: TObject);
     procedure MenuItemOpenDirectoryClick(Sender: TObject);
+    procedure TreeViewClassTreeHint(Sender: TObject; const Node: TTreeNode; var Hint: string);
 
   private
     FOnlyShowPublicMethod: Boolean;
@@ -571,6 +575,41 @@ begin
   end;
 end;
 
+//______________________________________________________________________________________________________________________
+
+procedure TImpactAnalyserForm.TreeViewClassTreeHint(Sender: TObject; const Node: TTreeNode; var Hint: string);
+var
+  DataObject: TObject;
+  ClassString: String;
+  MethodString: String;
+  ClassNode: TClassTreeNode;
+  MethodNode: TMethodTreeNode;
+begin
+  DataObject := TObject(Node.Data);
+  // Clear the hint initially
+  Hint := '';
+  if DataObject is TClassTreeNode then begin
+  //show information about class in the statusbar
+    ClassNode := (DataObject as TClassTreeNode);
+    ClassString := Format('Class: %s | Declared on Line: %d | Has %d methods', [ClassNode.ClassNodeName,
+                                                                                ClassNode.DeclarationLine,
+                                                                                ClassNode.MethodList.Count]);
+    StatusBar.SimpleText := ClassString;
+    Hint :=  ClassString;
+  end
+  else if DataObject is TMethodTreeNode then begin
+  //show information about method in the status bar
+   MethodNode :=  (DataObject as TMethodTreeNode);
+   MethodString := Format('Method: %s | Declared on Line: %d | Type: %s | Visibility: %s | Implemented on Line: %d | Has Recursion: %s', [MethodNode.FunctionName,
+                                                                                                                                          MethodNode.DeclarationLine,
+                                                                                                                                          TMethodTreeNode.C_FunctionTypeString[MethodNode.FunctionType],
+                                                                                                                                          TMethodTreeNode.C_VisibilityTypeString[MethodNode.Visibility],
+                                                                                                                                          MethodNode.ImplementationLine,
+                                                                                                                                          IfThen(MethodNode.HasRecursion, 'YES', 'NO')]);
+    StatusBar.SimpleText := MethodString;
+    Hint :=  MethodString;
+  end
+end;
 //______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.FormClose(Sender: TObject; var Action: TCloseAction);
