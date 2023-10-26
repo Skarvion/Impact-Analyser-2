@@ -16,7 +16,7 @@ type
   TFunctionTreeParser = class(TObject)
   private
     FIDKeyCount: Integer;
-    FInFileClassList: TList<TClassTreeNode>;
+    FInFileClassList: TObjectList<TClassTreeNode>;
     FIsLoaded: Boolean;
 
     // Class definition from Delphi AST
@@ -27,7 +27,9 @@ type
     function CreateClassTreeNode(
       ClassName: String;
       ClassType: TClassNodeTypeEnum;
-      DeclarationLine: Integer = 1): TClassTreeNode;
+      DeclarationLine: Integer;
+      OwnerClassNode: TClassTreeNode
+    ): TClassTreeNode;
     function CreateFunctionTreeNode(
       FunctionName: String;
       FunctionType: TFunctionTypeEnum;
@@ -36,13 +38,16 @@ type
       ImplementationLine: Integer = 1): TMethodTreeNode;
 
     procedure PopulateClassAndMethodList;
-    procedure ProcessTypeDeclaration(TypeDeclarationNode: TSyntaxNode);
+    function ProcessTypeDeclaration(
+      TypeDeclarationNode: TSyntaxNode;
+      OwnerClassNode: TClassTreeNode
+    ): TClassTreeNode;
     procedure ProcessClassMethodListByVisibility(
       ClassTreeNode: TClassTreeNode;
       SyntaxNode: TSyntaxNode);
 
     procedure PopulateMethodImplementation;
-    function GetClassNode(ClassNodeName: String): TClassTreeNode;
+    function GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode;
     procedure ProcessMethod(
       ClassNode: TClassTreeNode;
       MethodNode: TMethodTreeNode;
@@ -66,7 +71,7 @@ type
 
       function GetUnusedPrivateMethods: TList<TMethodTreeNode>;
 
-      property InFileClassList: TList<TClassTreeNode> read FInFileClassList;
+      property InFileClassList: TObjectList<TClassTreeNode> read FInFileClassList;
       property IsLoaded: Boolean read FIsLoaded;
   end;
 
@@ -77,6 +82,7 @@ uses
   , SysUtils
   , StrUtils
   , System.RegularExpressions
+  , NodeUtils
   ;
 
 { TFunctionTreeParser }
@@ -84,7 +90,7 @@ uses
 constructor TFunctionTreeParser.Create;
 begin
   FIDKeyCount := 0;
-  FInFileClassList := TList<TClassTreeNode>.Create;
+  FInFileClassList := TObjectList<TClassTreeNode>.Create(True);
   FIsLoaded := False;
 
   FUncateredMethods := TList<TSyntaxNode>.Create;
@@ -101,13 +107,17 @@ end;
 function TFunctionTreeParser.CreateClassTreeNode(
   ClassName: String;
   ClassType: TClassNodeTypeEnum;
-  DeclarationLine: Integer = 1): TClassTreeNode;
+  DeclarationLine: Integer;
+  OwnerClassNode: TClassTreeNode
+): TClassTreeNode;
 begin
   Result := TClassTreeNode.Create(
     FIDKeyCount,
     ClassName,
     ClassType,
-    DeclarationLine);
+    DeclarationLine,
+    OwnerClassNode
+  );
 
   Inc(FIDKeyCount);
 end;
@@ -200,6 +210,7 @@ var
   InterfaceNode: TSyntaxNode;
   ChildNode: TSyntaxNode;
   TypeChildNode: TSyntaxNode;
+  TopClassNode: TClassTreeNode;
 begin
   InterfaceNode := FRootSyntaxNode.FindNode(ntInterface);
   Assert(Assigned(InterfaceNode), 'Interface node is not found, something must be wrong');
@@ -208,27 +219,39 @@ begin
     if ChildNode.Typ = ntTypeSection then begin
       for TypeChildNode in ChildNode.ChildNodes do begin
         if TypeChildNode.Typ = ntTypeDecl then begin
-          ProcessTypeDeclaration(TypeChildNode);
+          TopClassNode := ProcessTypeDeclaration(TypeChildNode, nil);
+
+          if Assigned(TopClassNode) then begin
+            FInFileClassList.Add(TopClassNode)
+          end;
         end;
       end;
     end;
   end;
 end;
 
-procedure TFunctionTreeParser.ProcessTypeDeclaration(TypeDeclarationNode: TSyntaxNode);
+function TFunctionTreeParser.ProcessTypeDeclaration(
+  TypeDeclarationNode: TSyntaxNode;
+  OwnerClassNode: TClassTreeNode
+): TClassTreeNode;
 var
   TypeNode: TSyntaxNode;
-  ClassTreeNode: TClassTreeNode;
   ClassType: TClassNodeTypeEnum;
   Iteration: TSyntaxNode;
+  ChildTypeDeclarationNodes: TArray<TSyntaxNode>;
+  ChildTypeDeclarationNode: TSyntaxNode;
+  NestedClassNode: TClassTreeNode;
 begin
+  Result := nil;
+
   if SameText(TypeDeclarationNode.GetAttribute(anForwarded), 'true') then begin
     Exit;
   end;
 
   TypeNode := TypeDeclarationNode.FindNode(ntType);
   if not Assigned(TypeNode) then begin
-    raise Exception.Create('Type node not found. Line: ' + IntToStr(TypeDeclarationNode.Line));
+    // If TYPE is not a child node, likely to be a callback function
+    Exit;
   end;
 
   if SameText(TypeNode.GetAttribute(anType), 'class') then begin
@@ -241,17 +264,26 @@ begin
     Exit;
   end;
 
-  ClassTreeNode := CreateClassTreeNode(
+  Result := CreateClassTreeNode(
     TypeDeclarationNode.GetAttribute(anName),
     ClassType,
-    TypeDeclarationNode.Line);
-  FInFileClassList.Add(ClassTreeNode);
+    TypeDeclarationNode.Line,
+    OwnerClassNode
+  );
 
-  ProcessClassMethodListByVisibility(ClassTreeNode, TypeNode);
+  ProcessClassMethodListByVisibility(Result, TypeNode);
 
   for Iteration in TypeNode.ChildNodes do begin
     if Iteration.Typ in [ntStrictPrivate, ntPrivate, ntStrictProtected, ntProtected, ntPublic, ntPublished] then begin
-      ProcessClassMethodListByVisibility(ClassTreeNode, Iteration);
+      ProcessClassMethodListByVisibility(Result, Iteration);
+    end;
+  end;
+
+  ChildTypeDeclarationNodes := FindAllNodesOfType(TypeDeclarationNode, ntTypeDecl, fmNoSelfRecurse);
+  for ChildTypeDeclarationNode in ChildTypeDeclarationNodes do begin
+    NestedClassNode := ProcessTypeDeclaration(ChildTypeDeclarationNode, Result);
+    if Assigned(NestedClassNode) then begin
+      Result.NestedClassNodes.Add(NestedClassNode);
     end;
   end;
 end;
@@ -292,6 +324,8 @@ var
   ImplementationNode: TSyntaxNode;
   MethodIteration: TSyntaxNode;
   MethodNameList: TStringList;
+  MethodName: String;
+  ClassHierarchy: TList<String>;
   SelectedClassNode: TClassTreeNode;
   SelectedMethodNode: TMethodTreeNode;
 begin
@@ -313,41 +347,82 @@ begin
     if MethodNameList.Count = 1 then begin
       FUncateredMethods.Add(MethodIteration);
     end
-    else if MethodNameList.Count = 2 then begin
-      SelectedClassNode := GetClassNode(MethodNameList[0]);
+    else begin
+      MethodName := MethodNameList[MethodNameList.Count - 1];
+      ClassHierarchy := TList<String>.Create;
+      ClassHierarchy.AddRange(MethodNameList.ToStringArray);
+      ClassHierarchy.Delete(ClassHierarchy.Count - 1);
+
+      SelectedClassNode := GetClassNode(ClassHierarchy);
       if not Assigned(SelectedClassNode) then begin
-        raise Exception.Create('Class name is not found: ' + MethodNameList[0]);
+        raise Exception.Create('Class name is not found: ' + MethodNameList.DelimitedText);
       end;
 
       SelectedMethodNode := SelectedClassNode.GetMethodNode(
-        MethodNameList[1],
+        MethodName,
         GetMethodType(MethodIteration));
       if not Assigned(SelectedMethodNode) then begin
         raise Exception.Create('Method of class ' + SelectedClassNode.ClassNodeName +
-          ' is not found: ' + MethodNameList[1]);
+          ' is not found: ' + MethodName);
       end;
       ProcessMethod(SelectedClassNode, SelectedMethodNode, MethodIteration);
+
+      FreeAndNil(ClassHierarchy);
     end
-    else begin
-      raise Exception.Create('Implementation level method name is invalid: ' +
-        MethodNameList.DelimitedText);
-    end;
   end;
 
   FreeAndNil(MethodNameList);
 end;
 
-function TFunctionTreeParser.GetClassNode(ClassNodeName: String): TClassTreeNode;
-var
-  Iteration: TClassTreeNode;
-begin
-  for Iteration in FInFileClassList do begin
-    if SameText(Iteration.ClassNodeName, ClassNodeName) then begin
-      Result := Iteration;
+function TFunctionTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode;
+
+  function GetClassNodeRecursively(
+    CurrentClassNode: TClassTreeNode;
+    CurrentClassHierarchy: TList<String>
+  ): TClassTreeNode;
+  var
+    NestedClassNode: TClassTreeNode;
+    ClassToSearch: String;
+    PrunedClassHierarchy: TList<String>;
+  begin
+    Assert(CurrentClassHierarchy.Count > 0, 'Class hierarchy cannot be empty');
+
+    Result := nil;
+
+    ClassToSearch := CurrentClassHierarchy[0];
+    if SameStr(CurrentClassNode.ClassNodeName, ClassToSearch) then begin
+      Result := CurrentClassNode;
       Exit;
     end;
+
+    PrunedClassHierarchy := TList<String>.Create;
+    PrunedClassHierarchy.AddRange(CurrentClassHierarchy);
+    PrunedClassHierarchy.Delete(0);
+    for NestedClassNode in CurrentClassNode.NestedClassNodes do begin
+      if SameStr(NestedClassNode.ClassNodeName, ClassToSearch) then begin
+        if PrunedClassHierarchy.Count = 0 then begin
+          Result := NestedClassNode;
+          Break;
+        end
+        else begin
+          GetClassNodeRecursively(NestedClassNode, PrunedClassHierarchy);
+        end;
+      end;
+    end;
+
+    FreeAndNil(PrunedClassHierarchy);
   end;
+
+var
+  TopClassNode: TClassTreeNode;
+begin
   Result := nil;
+  for TopClassNode in FInFileClassList do begin
+    Result := GetClassNodeRecursively(TopClassNode, ClassHierarchy);
+    if Assigned(Result) then begin
+      Break;
+    end;
+  end;
 end;
 
 procedure TFunctionTreeParser.ProcessMethod(
@@ -415,14 +490,10 @@ end;
 procedure TFunctionTreeParser.ClearTree;
 var
   IterationUncatered: TSyntaxNode;
-  IterationClass: TClassTreeNode;
 begin
   FIsLoaded := False;
   for IterationUncatered in FUncateredMethods do begin
     IterationUncatered.Free;
-  end;
-  for IterationClass in FInFileClassList do begin
-    IterationClass.Free;
   end;
 
   FUncateredMethods.Clear;
