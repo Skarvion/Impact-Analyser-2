@@ -164,7 +164,6 @@ var
   FileSelector: TFileOpenDialog;
   Index: Integer;
 begin
-  MemoEditor.Lines.Text := '';
   FFunctionTreeParser.ClearTree;
 
   FIndexer := TProjectIndexer.Create;
@@ -176,14 +175,6 @@ begin
     FIndexer.Index(FileSelector.FileName);
   end;
 
-  for Index := 0 to FIndexer.ParsedUnits.Count - 1 do begin
-    MemoEditor.Lines.Text := MemoEditor.Lines.Text +
-      (FIndexer.ParsedUnits[Index].Name + ' in ' + FIndexer.ParsedUnits[Index].Path);
-
-    MemoEditor.Lines.Text := MemoEditor.Lines.Text +
-      ' First child node type: ' + SyntaxNodeNames[FIndexer.ParsedUnits[Index].SyntaxTree.ChildNodes[0].Typ] +
-      ' Node Type: ' +  SyntaxNodeNames[FIndexer.ParsedUnits[Index].SyntaxTree.Typ];
-  end;
 
   FFunctionTreeParser.ParseFromProjectIndex(FIndexer);
 
@@ -242,8 +233,6 @@ begin
       Builder.IncludeHandler := nil;
 
       SyntaxTree := Builder.Run(Stream);
-
-//      SyntaxTree.Create();
 
       if FGenerateASTXML then begin
         MemoEditor.Text := TSyntaxTreeWriter.ToXML(SyntaxTree, True);
