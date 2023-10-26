@@ -344,27 +344,39 @@ begin
 
     MethodNameList.DelimitedText := MethodIteration.GetAttribute(anName);
 
+    // Top Level function
     if MethodNameList.Count = 1 then begin
       FUncateredMethods.Add(MethodIteration);
     end
+
+    // Class member function
     else begin
       MethodName := MethodNameList[MethodNameList.Count - 1];
       ClassHierarchy := TList<String>.Create;
       ClassHierarchy.AddRange(MethodNameList.ToStringArray);
       ClassHierarchy.Delete(ClassHierarchy.Count - 1);
 
+
+      // Get small tree class node
       SelectedClassNode := GetClassNode(ClassHierarchy);
+
       if not Assigned(SelectedClassNode) then begin
         raise Exception.Create('Class name is not found: ' + MethodNameList.DelimitedText);
       end;
 
+
+      // Get small tree method node
       SelectedMethodNode := SelectedClassNode.GetMethodNode(
         MethodName,
-        GetMethodType(MethodIteration));
+        GetMethodType(MethodIteration)
+      );
+
+      // Checks that current implementation exists in the interface
       if not Assigned(SelectedMethodNode) then begin
         raise Exception.Create('Method of class ' + SelectedClassNode.ClassNodeName +
           ' is not found: ' + MethodName);
       end;
+
       ProcessMethod(SelectedClassNode, SelectedMethodNode, MethodIteration);
 
       FreeAndNil(ClassHierarchy);
@@ -427,13 +439,20 @@ end;
 
 procedure TFunctionTreeParser.ProcessMethod(
   ClassNode: TClassTreeNode;
+
+  // small tree method node
   MethodNode: TMethodTreeNode;
+
+  // Big tree method node
   SyntaxNode: TSyntaxNode);
 var
   StatementsSyntaxNode: TSyntaxNode;
 begin
   MethodNode.ImplementationLine := SyntaxNode.Line;
+
+  // Actual content of the method:
   StatementsSyntaxNode := SyntaxNode.FindNode(ntStatements);
+
   if not Assigned(StatementsSyntaxNode) then begin
     raise Exception.Create('Statements node not found');
   end;
@@ -444,6 +463,7 @@ end;
 procedure TFunctionTreeParser.RecurseAddCallMethod(
   ClassNode: TClassTreeNode;
   SelectedMethodNode: TMethodTreeNode;
+  // Method content (big tree statements node)
   SyntaxNode: TSyntaxNode);
 var
   Iteration: TSyntaxNode;
@@ -452,32 +472,58 @@ var
   CalledMethodName: String;
   FoundMethodNode: TMethodTreeNode;
 begin
+  // For ALL children of STATEMENTS node
   for Iteration in SyntaxNode.ChildNodes do begin
+
+    // Only if the node is a CALL node:
     if Iteration.Typ = ntCall then begin
+
       IdentifierSyntaxNode := Iteration.FindNode(ntIdentifier);
+
       if Assigned(IdentifierSyntaxNode) then begin
+
+        // MyClass.MyFunc or MyFunc
         RawMethodNameList := TStringList.Create;
         RawMethodNameList.Delimiter := '.';
         RawMethodNameList.DelimitedText := IdentifierSyntaxNode.GetAttribute(anName);
+
+        // MyFunc
         if RawMethodNameList.Count = 1 then begin
           CalledMethodName := RawMethodNameList[0];
         end
+
+        // MyClass.MyFunc
         else if RawMethodNameList.Count = 2 then begin
-          // Ignore if it calling methods from other class
-          if not (SameText(RawMethodNameList[0], 'self') or
-            SameText(RawMethodNameList[0], ClassNode.ClassNodeName)) then
+
+
+          if (SameText(RawMethodNameList[0], 'self') or SameText(RawMethodNameList[0], ClassNode.ClassNodeName)) then
           begin
-            Continue;
+            CalledMethodName := RawMethodNameList[1];
+          end
+          else begin
+             CalledMethodName :=  RawMethodNameList[0] + '.' + RawMethodNameList[1];
           end;
-          CalledMethodName := RawMethodNameList[1];
+
         end
+
+        // Error
         else begin
           raise Exception.Create('Called method name is invalid: ' + RawMethodNameList.DelimitedText);
         end;
+
         FreeAndNil(RawMethodNameList);
 
+
+        // TODO: instead of checking THIS class only, we need to check ALL classes
         FoundMethodNode := ClassNode.GetMethodNode(CalledMethodName);
+
+        for
+
+
+
+
         if Assigned(FoundMethodNode) then begin
+          // SelectedMethodNode has a call to FoundMethodNode in it's implementation.
           SelectedMethodNode.AddMethodCall(FoundMethodNode);
         end;
       end;
