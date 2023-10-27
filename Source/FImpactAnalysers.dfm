@@ -427,6 +427,10 @@ object ImpactAnalyserForm: TImpactAnalyserForm
       object MenuItemUncalledPublicMethods: TMenuItem
         Caption = 'List uncalled public methods (WIP)'
       end
+      object ExportAstAsXmlMenuItem: TMenuItem
+        Caption = 'Export AST as XML'
+        OnClick = MenuItemExportAstAsXmlClick
+      end
     end
     object TMenuItem
     end

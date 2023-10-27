@@ -78,6 +78,8 @@ type
 
       property ClassList: TObjectList<TClassTreeNode> read FClassList;
       property IsLoaded: Boolean read FIsLoaded;
+
+      property RootSyntaxNode: TSyntaxNode read FRootSyntaxNode;
   end;
 
 implementation

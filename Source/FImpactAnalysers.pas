@@ -89,6 +89,7 @@ type
     MenuItemOpenDirectory: TMenuItem;
     HideMemo1: TMenuItem;
     HideMemo2: TMenuItem;
+    ExportAstAsXmlMenuItem: TMenuItem;
 
     procedure MemoEditorKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MemoEditorClick(Sender: TObject);
@@ -111,6 +112,7 @@ type
     procedure HideMemoClick(Sender: TObject);
     procedure HideDetailClick(Sender: TObject);
     procedure DefaultHiding(Sender: TObject);
+    procedure MenuItemExportAstAsXmlClick(Sender: TObject);
 
 
   private
@@ -875,6 +877,29 @@ begin
   FGenerateASTXML := False;
   FOnlyShowPublicMethod := False;
 //  MemoEditor.Lines.Text := '';
+end;
+
+procedure TImpactAnalyserForm.MenuItemExportAstAsXmlClick(Sender: TObject);
+var
+  FileSaveDialog: TFileSaveDialog;
+  FileWriter: TStreamWriter;
+begin
+  if not Assigned(FTreeParser) then begin
+    Exit;
+  end;
+
+  FileSaveDialog := TFileSaveDialog.Create(Self);
+  if not FileSaveDialog.Execute then begin
+    Exit;
+  end;
+
+  FileWriter := nil;
+  try
+    FileWriter := TStreamWriter.Create(FileSaveDialog.FileName);
+    FileWriter.Write(TSyntaxTreeWriter.ToXML(FTreeParser.RootSyntaxNode, True));
+  finally
+    FreeAndNil(FileWriter);
+  end;
 end;
 
 end.
