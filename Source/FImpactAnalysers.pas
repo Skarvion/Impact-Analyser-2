@@ -58,6 +58,8 @@ type
     SplitterAnalysis: TSplitter;
     MemoEditor: TRichEdit;
     MenuItemOpenDirectory: TMenuItem;
+    HideMemo1: TMenuItem;
+    HideMemo2: TMenuItem;
 
     procedure MemoEditorKeyUp(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure MemoEditorClick(Sender: TObject);
@@ -77,6 +79,10 @@ type
     procedure MenuItemOpenDirectoryClick(Sender: TObject);
     procedure TreeViewClassTreeHint(Sender: TObject; const Node: TTreeNode; var Hint: string);
     procedure UpdateNodeText(TreeNode: TTreeNode; TextToAppend: String);
+    procedure HideMemoClick(Sender: TObject);
+    procedure HideDetailClick(Sender: TObject);
+    procedure DefaultHiding(Sender: TObject);
+
 
   private
     FOnlyShowPublicMethod: Boolean;
@@ -220,6 +226,8 @@ begin
 end;
 
 //______________________________________________________________________________________________________________________
+
+
 
 procedure TImpactAnalyserForm.Parse(ReloadFrom: TReloadFrom);
 var
@@ -591,6 +599,41 @@ begin
   LabelExtraData2.Visible := False;
   LabelExtraData3.Visible := False;
 end;
+//______________________________________________________________________________________________________________________
+
+procedure TImpactAnalyserForm.DefaultHiding(Sender: TObject);
+begin
+     MemoEditor.Visible := False;
+     PanelCodeContentContainer.Visible := False;
+     PanelNodeAttributesContainer.Visible := False;
+end;
+//______________________________________________________________________________________________________________________
+procedure TImpactAnalyserForm.HideMemoClick(Sender: TObject);
+begin
+     if (Sender as TMenuItem).Checked  then begin
+         MemoEditor.Visible := True;
+         PanelCodeContentContainer.Visible := True;
+        (Sender as TMenuItem).Checked := False;
+     end
+     else if not (Sender as TMenuItem).Checked  then begin
+         MemoEditor.Visible := False;
+         PanelCodeContentContainer.Visible := False;
+        (Sender as TMenuItem).Checked := True;
+     end;
+end;
+//______________________________________________________________________________________________________________________
+
+procedure TImpactAnalyserForm.HideDetailClick(Sender: TObject);
+begin
+        if (Sender as TMenuItem).Checked  then begin
+         PanelNodeAttributesContainer.Visible := True;
+        (Sender as TMenuItem).Checked := False;
+     end
+     else if not (Sender as TMenuItem).Checked  then begin
+         PanelNodeAttributesContainer.Visible := False;
+        (Sender as TMenuItem).Checked := True;
+     end;
+end;
 
 //______________________________________________________________________________________________________________________
 
@@ -717,6 +760,9 @@ begin
     Hint :=  MethodHintString;
   end
 end;
+
+
+
 //______________________________________________________________________________________________________________________
 
 procedure TImpactAnalyserForm.FormClose(Sender: TObject; var Action: TCloseAction);

@@ -12,6 +12,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
   Font.Style = []
   Menu = MainMenu
   OnClose = FormClose
+  OnCreate = DefaultHiding
   OnMouseEnter = MenuItemOpenDirectoryClick
   OnShow = FormShow
   TextHeight = 13
@@ -250,7 +251,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         ParentFont = False
       end
       object Label1: TLabel
-        Left = 433
+        Left = 429
         Top = 6
         Width = 75
         Height = 16
@@ -264,7 +265,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         ParentFont = False
       end
       object ButtonReloadFile: TButton
-        Left = 510
+        Left = 506
         Top = 25
         Width = 75
         Height = 25
@@ -274,7 +275,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         OnClick = ButtonReloadFrom
       end
       object ButtonReloadEditArea: TButton
-        Left = 429
+        Left = 425
         Top = 25
         Width = 75
         Height = 25
@@ -406,6 +407,16 @@ object ImpactAnalyserForm: TImpactAnalyserForm
         Caption = 'Generate AST XML'
         OnClick = MenuItemGenerateASTXMLClick
       end
+      object HideMemo1: TMenuItem
+        Caption = 'Hide Memo'
+        Checked = True
+        OnClick = HideMemoClick
+      end
+      object HideMemo2: TMenuItem
+        Caption = 'Hide Detailed Panel'
+        Checked = True
+        OnClick = HideDetailClick
+      end
     end
     object MenuItemAnalyse: TMenuItem
       Caption = 'Analyse'
@@ -416,6 +427,8 @@ object ImpactAnalyserForm: TImpactAnalyserForm
       object MenuItemUncalledPublicMethods: TMenuItem
         Caption = 'List uncalled public methods (WIP)'
       end
+    end
+    object TMenuItem
     end
   end
   object OpenDialog: TOpenDialog
