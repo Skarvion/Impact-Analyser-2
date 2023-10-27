@@ -322,6 +322,8 @@ var
   Builder: TPasSyntaxTreeBuilder;
   SyntaxTree: TSyntaxNode;
 begin
+  Stream := nil;
+
   try
     // read from code file
     Stream := TStringStream.Create;
@@ -355,7 +357,6 @@ begin
       // Build small tree
       FTreeParser.ParseFromDelphiAST(SyntaxTree);
 
-
       DisplayTree;
     except
       on E: Exception do begin
@@ -365,7 +366,7 @@ begin
       end;
     end;
   finally
-    Stream.Free;
+    FreeAndNil(Stream);
   end;
 
   //FreeAndNil(SyntaxTree);
