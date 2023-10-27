@@ -8,8 +8,8 @@ uses
   , TreeParsers
   , MethodTreeNodes, Vcl.ExtCtrls
   , ClassTreeNodes, Vcl.Grids
-  , DelphiAST.ProjectIndexer,
-  ; Character
+  , DelphiAST.ProjectIndexer
+  , Character
   , DelphiAST.Classes
   ;
 
