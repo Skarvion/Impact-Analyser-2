@@ -100,3 +100,6 @@ $RECYCLE.BIN/
 
 # Delphi IDE specific files
 *.delphilsp.json
+
+# VSCode specific files
+.vscode
