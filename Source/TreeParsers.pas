@@ -134,6 +134,11 @@ function TTreeParser.CreateFunctionTreeNode(
   Visibility: TVisibilityEnum;
   DeclarationLine: Integer = 1;
   ImplementationLine: Integer = 1): TMethodTreeNode;
+var
+  ClassNodeNames: TList<String>;
+  OwnerClassNode: TClassTreeNode;
+  CombinedClassNodeName: String;
+  Index: Integer;
 begin
   Result := TMethodTreeNode.Create;
   Result.ID := FIDKeyCount;
@@ -142,11 +147,28 @@ begin
   Result.Visibility := Visibility;
   Result.DeclarationLine := DeclarationLine;
   Result.ImplementationLine := ImplementationLine;
-  Result.ClassNodeName := ClassNode.ClassNodeName;
-
-  // TODO: Fix for nested class
 
   Inc(FIDKeyCount);
+
+  // @TODO Better off to keep track of the TClassTreeNode itself for naming, but I don't know how to
+  //       avoid circular referencing yet
+  ClassNodeNames := TList<String>.Create;
+  ClassNodeNames.Add(ClassNode.ClassNodeName);
+
+  OwnerClassNode := ClassNode;
+  while Assigned(OwnerClassNode.OwnerClassNode) do begin
+    OwnerClassNode := OwnerClassNode.OwnerClassNode;
+    ClassNodeNames.Add(OwnerClassNode.ClassNodeName);
+  end;
+
+  CombinedClassNodeName := '';
+  for Index := ClassNodeNames.Count - 1 downto 0 do begin
+    CombinedClassNodeName := CombinedClassNodeName + IfThen(CombinedClassNodeName <> '', '.') + ClassNodeNames[Index];
+  end;
+
+  Result.ClassNodeName := CombinedClassNodeName;
+
+  FreeAndNil(ClassNodeNames);
 end;
 
 class function TTreeParser.GetFunctionTreeVisibility(
