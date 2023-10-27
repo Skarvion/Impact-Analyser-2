@@ -412,7 +412,10 @@ function TTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode
     Result := nil;
 
     ClassToSearch := CurrentClassHierarchy[0];
-    if SameStr(CurrentClassNode.ClassNodeName, ClassToSearch) then begin
+    if not SameStr(CurrentClassNode.ClassNodeName, ClassToSearch) then begin
+      Exit;
+    end
+    else if CurrentClassHierarchy.Count = 1 then begin
       Result := CurrentClassNode;
       Exit;
     end;
@@ -421,14 +424,8 @@ function TTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode
     PrunedClassHierarchy.AddRange(CurrentClassHierarchy);
     PrunedClassHierarchy.Delete(0);
     for NestedClassNode in CurrentClassNode.NestedClassNodes do begin
-      if SameStr(NestedClassNode.ClassNodeName, ClassToSearch) then begin
-        if PrunedClassHierarchy.Count = 0 then begin
-          Result := NestedClassNode;
-          Break;
-        end
-        else begin
-          GetClassNodeRecursively(NestedClassNode, PrunedClassHierarchy);
-        end;
+      if SameStr(NestedClassNode.ClassNodeName, PrunedClassHierarchy[0]) then begin
+        Result := GetClassNodeRecursively(NestedClassNode, PrunedClassHierarchy);
       end;
     end;
 
