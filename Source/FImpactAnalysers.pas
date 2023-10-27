@@ -11,10 +11,39 @@ uses
   , DelphiAST.ProjectIndexer
   , Character
   , DelphiAST.Classes
+  , StatusModals
   ;
 
 type
   TReloadFrom = (rfFromEditArea, rfFromFile);
+
+  TProjectIndexerThread = class(TThread)
+  strict private
+    FDprFileName: String;
+    FParsedUnitCount: Integer;
+    FStatusModal: TStatusFormModal;
+    FProjectIndexerResult: TProjectIndexer;
+    FTreeParserResult: TTreeParser;
+
+    procedure OnUnitParsedEvent(
+      Sender: TObject;
+      const UnitName: String;
+      const FileName: string;
+      var SyntaxTree: TSyntaxNode; SyntaxTreeFromParser: Boolean;
+      var doAbort: Boolean
+    );
+
+  strict protected
+    procedure Execute; override;
+
+  public
+    constructor Create(CreateSuspended: Boolean);
+
+    property DprFileName: String write FDprFileName;
+    property StatusModal: TStatusFormModal write FStatusModal;
+    property ProjectIndexerResult: TProjectIndexer read FProjectIndexerResult;
+    property TreeParserResult: TTreeParser read FTreeParserResult;
+  end;
 
   TImpactAnalyserForm = class(TForm)
     StatusBar: TStatusBar;
@@ -94,10 +123,15 @@ type
 
     FSyntaxTree: TSyntaxNode;
 
+    FProjectIndexingStatusModal: TStatusFormModal;
+    FProjectIndexerThread: TProjectIndexerThread;
+
     procedure DisplayCursorPositionInStatus;
     procedure UpdateCursorPosition(LineNumber: Integer);
 
     procedure Parse(ReloadFrom: TReloadFrom);
+
+    procedure OnProjectIndexerThreadDone(Sender: TObject);
 
     procedure DisplayTree;
     procedure DisplayClassNodeOnTree(
@@ -135,6 +169,47 @@ uses
   ;
 
 {$R *.dfm}
+
+
+constructor TProjectIndexerThread.Create(CreateSuspended: Boolean);
+begin
+  inherited Create(CreateSuspended);
+  FDprFileName := '';
+  FParsedUnitCount := 0;
+  FStatusModal := nil;
+  FProjectIndexerResult := nil;
+  FTreeParserResult := nil;
+end;
+
+procedure TProjectIndexerThread.Execute;
+begin
+  FProjectIndexerResult := TProjectIndexer.Create;
+  FProjectIndexerResult.OnUnitParsed := OnUnitParsedEvent;
+  FProjectIndexerResult.SearchPath := // '../';
+    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
+    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
+    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
+  FProjectIndexerResult.Index(FDprFileName);
+
+  FStatusModal.SetStatus('Building impact tree');
+  FTreeParserResult := TTreeParser.Create;
+  FTreeParserResult.ParseFromProjectIndex(FProjectIndexerResult);
+end;
+
+procedure TProjectIndexerThread.OnUnitParsedEvent(
+  Sender: TObject;
+  const UnitName: String;
+  const FileName: string;
+  var SyntaxTree: TSyntaxNode; SyntaxTreeFromParser: Boolean;
+  var doAbort: Boolean
+);
+begin
+  Inc(FParsedUnitCount);
+  FStatusModal.SetStatus('Parsed ' + IntToStr(FParsedUnitCount) + ' files');
+end;
 
 procedure TImpactAnalyserForm.MenuItemGenerateASTXMLClick(Sender: TObject);
 var
@@ -174,33 +249,45 @@ end;
 
 procedure TImpactAnalyserForm.MenuItemOpenDirectoryClick(Sender: TObject);
 var
-  FoundDirectory: Boolean;
   FileSelector: TFileOpenDialog;
-  Index: Integer;
+  FileName: String;
 begin
-  FTreeParser.ClearTree;
-
-  FreeAndNil(FIndexer);
-  FIndexer := TProjectIndexer.Create;
   FileSelector := TFileOpenDialog.Create(Self);
-
   if FileSelector.Execute then begin
-    FIndexer.SearchPath := // '../';
-    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
-    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
-    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
-    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
-    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
-    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
-
-    FIndexer.Index(FileSelector.FileName);
+    FileName := FileSelector.FileName;
+    FreeAndNil(FileSelector);
+  end
+  else begin
+    FreeAndNil(FileSelector);
+    Exit;
   end;
 
-  FTreeParser.ParseFromProjectIndex(FIndexer);
+  FreeAndNil(FTreeParser);
+  FreeAndNil(FIndexer);
+
+  FProjectIndexingStatusModal := TStatusFormModal.Create(Application);
+
+  FProjectIndexerThread := TProjectIndexerThread.Create(True);
+  FProjectIndexerThread.FreeOnTerminate := True;
+  FProjectIndexerThread.DprFileName := FileName;
+  FProjectIndexerThread.StatusModal := FProjectIndexingStatusModal;
+  FProjectIndexerThread.OnTerminate := OnProjectIndexerThreadDone;
+  FProjectIndexerThread.Start;
+
+  try
+    FProjectIndexingStatusModal.ShowModal;
+  finally
+    FreeAndNil(FProjectIndexingStatusModal);
+  end;
 
   DisplayTree;
+end;
 
-  FreeAndNil(FileSelector);
+procedure TImpactAnalyserForm.OnProjectIndexerThreadDone(Sender: TObject);
+begin
+  FIndexer := FProjectIndexerThread.ProjectIndexerResult;
+  FTreeParser := FProjectIndexerThread.TreeParserResult;
+  FProjectIndexingStatusModal.Close;
 end;
 
 //______________________________________________________________________________________________________________________
@@ -767,6 +854,7 @@ end;
 
 procedure TImpactAnalyserForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  FreeAndNil(FIndexer);
   FreeAndNil(FTreeParser);
 end;
 

@@ -2,8 +2,8 @@ object ImpactAnalyserForm: TImpactAnalyserForm
   Left = 0
   Top = 0
   Caption = ']'
-  ClientHeight = 719
-  ClientWidth = 1237
+  ClientHeight = 718
+  ClientWidth = 1233
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -19,12 +19,12 @@ object ImpactAnalyserForm: TImpactAnalyserForm
   object SplitterMain: TSplitter
     Left = 617
     Top = 0
-    Height = 700
+    Height = 699
   end
   object StatusBar: TStatusBar
     Left = 0
-    Top = 700
-    Width = 1237
+    Top = 699
+    Width = 1233
     Height = 19
     Panels = <>
     SimplePanel = True
@@ -32,8 +32,8 @@ object ImpactAnalyserForm: TImpactAnalyserForm
   object PanelCodeAnalysisContainer: TPanel
     Left = 620
     Top = 0
-    Width = 617
-    Height = 700
+    Width = 613
+    Height = 699
     Align = alClient
     Caption = 'PanelCodeAnalysisContainer'
     TabOrder = 1
@@ -53,7 +53,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
       Align = alBottom
       TabOrder = 0
       DesignSize = (
-        615
+        611
         360)
       object LabelIDCaption: TLabel
         Left = 14
@@ -288,8 +288,8 @@ object ImpactAnalyserForm: TImpactAnalyserForm
     object PanelTreeViewContainer: TPanel
       Left = 1
       Top = 1
-      Width = 615
-      Height = 335
+      Width = 611
+      Height = 334
       Align = alClient
       TabOrder = 1
       object TreeViewClassTree: TTreeView
@@ -314,7 +314,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
       object PanelSeachContainer: TPanel
         Left = 1
         Top = 1
-        Width = 613
+        Width = 609
         Height = 24
         Align = alTop
         ParentBackground = False
@@ -358,7 +358,7 @@ object ImpactAnalyserForm: TImpactAnalyserForm
     Left = 0
     Top = 0
     Width = 617
-    Height = 700
+    Height = 699
     Align = alLeft
     Caption = 'PanelCodeContentContainer'
     TabOrder = 2
