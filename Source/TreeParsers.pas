@@ -16,7 +16,7 @@ type
   TTreeParser = class(TObject)
   private
     FIDKeyCount: Integer;
-    FInFileClassList: TObjectList<TClassTreeNode>;
+    FClassList: TObjectList<TClassTreeNode>;
     FIsLoaded: Boolean;
 
     // Class definition from Delphi AST
@@ -24,7 +24,6 @@ type
 
     FSyntaxNodeDict: TDictionary<String, TSyntaxNode>;
 
-    FClassNodes: TObjectList<TClassTreeNode>;
 
     FUncateredMethods: TList<TSyntaxNode>;
 
@@ -76,7 +75,7 @@ type
 
       function GetUnusedPrivateMethods: TList<TMethodTreeNode>;
 
-      property InFileClassList: TObjectList<TClassTreeNode> read FInFileClassList;
+      property ClassList: TObjectList<TClassTreeNode> read FClassList;
       property IsLoaded: Boolean read FIsLoaded;
   end;
 
@@ -95,20 +94,18 @@ uses
 constructor TTreeParser.Create;
 begin
   FIDKeyCount := 0;
-  FInFileClassList := TObjectList<TClassTreeNode>.Create(True);
+  FClassList := TObjectList<TClassTreeNode>.Create(True);
   FIsLoaded := False;
 
   FUncateredMethods := TList<TSyntaxNode>.Create;
 
-  FClassNodes := TObjectList<TClassTreeNode>.Create(False);
 end;
 
 destructor TTreeParser.Destroy;
 begin
   ClearTree;
   FreeAndNil(FUncateredMethods);
-  FreeAndNil(FInFileClassList);
-  FreeAndNil(FClassNodes);
+  FreeAndNil(FClassList);
   inherited;
 end;
 
@@ -128,7 +125,6 @@ begin
   );
 
   Inc(FIDKeyCount);
-  FClassNodes.Add(Result);
 end;
 
 function TTreeParser.CreateFunctionTreeNode(
@@ -235,7 +231,7 @@ begin
           TopClassNode := ProcessTypeDeclaration(TypeChildNode, nil);
 
           if Assigned(TopClassNode) then begin
-            FInFileClassList.Add(TopClassNode)
+            FClassList.Add(TopClassNode)
           end;
         end;
       end;
@@ -443,7 +439,7 @@ var
   TopClassNode: TClassTreeNode;
 begin
   Result := nil;
-  for TopClassNode in FInFileClassList do begin
+  for TopClassNode in FClassList do begin
     Result := GetClassNodeRecursively(TopClassNode, ClassHierarchy);
     if Assigned(Result) then begin
       Break;
@@ -517,7 +513,7 @@ procedure TTreeParser.RecurseAddCallMethod(
           end
           else begin
             // Search all classes, except current class
-            for ClassNodeItem in FClassNodes do begin
+            for ClassNodeItem in FClassList do begin
               if ClassNodeItem.ClassNodeName = ThisClassNode.ClassNodeName then Continue;
 
               ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
@@ -572,8 +568,7 @@ begin
   end;
 
   FUncateredMethods.Clear;
-  FClassNodes.Clear;
-  FInFileClassList.Clear;
+  FClassList.Clear;
 
 end;
 
@@ -583,7 +578,7 @@ var
   SelectedMethodTreeNode: TMethodTreeNode;
 begin
   Result := TList<TMethodTreeNode>.Create;
-  for SelectedClassTreeNode in FInFileClassList do begin
+  for SelectedClassTreeNode in FClassList do begin
     for SelectedMethodTreeNode in SelectedClassTreeNode.GetMethodNodeByVisibility([vStrictPrivate, vPrivate]) do
     begin
       if SelectedMethodTreeNode.CallerList.Count = 0 then begin

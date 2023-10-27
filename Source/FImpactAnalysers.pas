@@ -176,13 +176,13 @@ begin
   FileSelector := TFileOpenDialog.Create(Self);
 
   if FileSelector.Execute then begin
-    FIndexer.SearchPath :=
-    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
-    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
-    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
-    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
-    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
-    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
+    FIndexer.SearchPath := '../';
+//    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
+//    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
+//    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
+//    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
+//    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
+//    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
 
     FIndexer.Index(FileSelector.FileName);
   end;
@@ -285,7 +285,7 @@ begin
   end;
 
   // Use FunctionTreeParser's InFileClass List to display each node on tree
-  for ClassNode in FTreeParser.InFileClassList do begin
+  for ClassNode in FTreeParser.ClassList do begin
     DisplayClassNodeOnTree(ClassNode);
   end;
 end;
