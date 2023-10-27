@@ -1,7 +1,7 @@
 object ImpactAnalyserForm: TImpactAnalyserForm
   Left = 0
   Top = 0
-  Caption = ']'
+  Caption = 'Impact Analyser'
   ClientHeight = 718
   ClientWidth = 1233
   Color = clBtnFace
