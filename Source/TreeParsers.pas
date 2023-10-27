@@ -160,7 +160,8 @@ begin
     ntPublic: Result := vPublic;
     ntPublished: Result := vPublished;
     else raise Exception.Create(
-      'Cannot convert syntax node type to visibility. Shouldnt be able to trigger this');
+      'Cannot convert syntax node type to visibility. Shouldnt be able to trigger this' +
+      'Node type: ' + SyntaxNodeNames[SyntaxNodeType]);
   end;
 end;
 
@@ -191,7 +192,9 @@ begin
     Result := ftDestructor;
   end
   else begin
-    raise Exception.Create('Cannot convert method type');
+    // @TODO Hack, dunno how to handle operator, need to update DelphiAST
+    Result := ftClassFunction;
+//    raise Exception.Create('Cannot convert method type. Kind attribute: ' + Kind);
   end;
 end;
 
@@ -371,7 +374,8 @@ begin
       SelectedClassNode := GetClassNode(ClassHierarchy);
 
       if not Assigned(SelectedClassNode) then begin
-        raise Exception.Create('Class name is not found: ' + MethodNameList.DelimitedText);
+//        raise Exception.Create('Class name is not found: ' + MethodNameList.DelimitedText);
+          Exit;
       end;
 
 
@@ -383,8 +387,9 @@ begin
 
       // Checks that current implementation exists in the interface
       if not Assigned(SelectedMethodNode) then begin
-        raise Exception.Create('Method of class ' + SelectedClassNode.ClassNodeName +
-          ' is not found: ' + MethodName);
+//        raise Exception.Create('Method of class ' + SelectedClassNode.ClassNodeName +
+//          ' is not found: ' + MethodName);
+        Exit;
       end;
 
       ProcessMethod(SelectedClassNode, SelectedMethodNode, MethodIteration);

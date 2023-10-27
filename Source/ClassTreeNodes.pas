@@ -30,6 +30,7 @@ type
 
     FMethodList: TList<TMethodTreeNode>;
     FNestedClassNodes: TObjectList<TClassTreeNode>;
+    FSelected: Boolean;
 
   public
     constructor Create(
@@ -64,6 +65,8 @@ type
 
     property MethodList: TList<TMethodTreeNode> read FMethodList;
     property NestedClassNodes: TObjectList<TClassTreeNode> read FNestedClassNodes;
+
+    property Selected: Boolean read FSelected write FSelected;
   end;
 
 implementation

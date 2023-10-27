@@ -179,13 +179,13 @@ begin
   FileSelector := TFileOpenDialog.Create(Self);
 
   if FileSelector.Execute then begin
-    FIndexer.SearchPath := '../';
-//    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
-//    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
-//    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
-//    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
-//    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
-//    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
+    FIndexer.SearchPath := // '../';
+    '..\..\..\..\..\Transact\Delphi\Common\DatabaseObjects\Source;' +
+    '..\..\..\..\..\Transact\Delphi\Common\BusinessHelpers\Source;' +
+    '..\..\..\..\..\Mastersystem_V\Delphi\AppMastery\Common\Source;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness\BusinessObjects\Generated;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\WorkspaceFramework\TestHarness;' +
+    '..\..\..\..\..\MasterSystem_V\Delphi\Common\Source;..\..\..\..\..\WebMastery\Common\Source';
 
     FIndexer.Index(FileSelector.FileName);
   end;
@@ -478,92 +478,52 @@ begin
   if TreeViewClassTree.Items.Count = 0 then begin
     Exit;
   end;
-
-  //@TODO: I'm VERY not proud of this method
-  SearchNames := TStringList.Create;
-  SearchNames.Delimiter := '.';
-  SearchNames.DelimitedText := EditSearch.Text;
-  if SearchNames.Count = 1 then begin
-    MethodName := SearchNames[0];
-    ClassName := '';
-  end
-  else if SearchNames.Count = 2 then begin
-    ClassName := SearchNames[0];
-    MethodName := SearchNames[1];
-    SearchNames.Free;
-    // @TODO: Cater class and method search
-    Exit;
-  end
-  else begin
-    SearchNames.Free;
-    Exit;
-  end;
-  SearchNames.Free;
-
+//  //@TODO: I'm VERY not proud of this method
+//  SearchNames := TStringList.Create;
+//  SearchNames.Delimiter := '.';
+//  SearchNames.DelimitedText := EditSearch.Text;
+//  if SearchNames.Count = 1 then begin
+//    MethodName := SearchNames[0];
+//    ClassName := '';
+//  end
+//  else if SearchNames.Count = 2 then begin
+//    ClassName := SearchNames[0];
+//    MethodName := SearchNames[1];
+//    SearchNames.Free;
+//    // @TODO: Cater class and method search
+//    Exit;
+//  end
+//  else begin
+//    SearchNames.Free;
+//    Exit;
+//  end;
+//  SearchNames.Free;
+  MethodName := EditSearch.Text;
   InitialSelectedTreeNode := TreeViewClassTree.TopItem;
-
   while Assigned(InitialSelectedTreeNode) do begin
+    if TObject(InitialSelectedTreeNode.Data) is TClassTreeNode then begin
+      (TObject(InitialSelectedTreeNode.Data) as TClassTreeNode).Selected := False;
+    end
+    else begin
+      (TObject(InitialSelectedTreeNode.Data) as TMethodTreeNode).Selected := False;
+    end;
     if ContainsStr(InitialSelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
-
-      (TObject(InitialSelectedTreeNode.Data) as TMethodTreeNode).Selected := True;
+      if TObject(InitialSelectedTreeNode.Data) is TClassTreeNode then begin
+        (TObject(InitialSelectedTreeNode.Data) as TClassTreeNode).Selected := True;
+      end
+      else begin
+        (TObject(InitialSelectedTreeNode.Data) as TMethodTreeNode).Selected := True;
+      end;
       InitialSelectedTreeNode.Expanded := true;
-
-
       aNode := InitialSelectedTreeNode.Parent;
       while aNode <> nil do begin
-        InitialSelectedTreeNode.Parent.Expanded := True;
+        aNode.Expanded := True;
         aNode := aNode.Parent;
       end;
     end;
     InitialSelectedTreeNode := InitialSelectedTreeNode.GetNext;
   end;
-
   TreeViewClassTree.Refresh;
-
-
-//    aNode := Node.Parent;
-//    aNode.Expanded := true;
-//
-//
-//    while aNode <> nil do begin
-//      aNode.Expanded := true;
-//      aNode := Node.Parent;
-//    end;
-
-//
-//
-//  IsFromStart := True;
-////  if Assigned(InitialSelectedTreeNode) then begin
-//    SelectedTreeNode := InitialSelectedTreeNode.GetNext;
-////    IsFromStart := False;
-////  end
-////  else begin
-////    SelectedTreeNode := TreeViewClassTree.Items.GetFirstNode;
-////  end;
-//
-//  while Assigned(SelectedTreeNode) do begin
-//    if ContainsStr(SelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
-//      SelectedTreeNode.Selected := True;
-//      Exit;
-//    end;
-//    SelectedTreeNode := SelectedTreeNode.GetNext;
-//  end;
-//
-//  TreeViewClassTree.Refresh;
-//
-//  if IsFromStart then begin
-//    Exit;
-//  end;
-//
-//  SelectedTreeNode := TreeViewClassTree.Items.GetFirstNode;
-//  while SelectedTreeNode <> InitialSelectedTreeNode do begin
-//    if ContainsStr(SelectedTreeNode.Text.ToUpper, MethodName.ToUpper) then begin
-//      SelectedTreeNode.Selected := True;
-//      TreeViewClassTree.Refresh;
-//      Exit;
-//    end;
-//    SelectedTreeNode := SelectedTreeNode.GetNext;
-//  end;
 end;
 
 //______________________________________________________________________________________________________________________
