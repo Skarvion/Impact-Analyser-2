@@ -39,7 +39,8 @@ type
       FunctionType: TMethodTypeEnum;
       Visibility: TVisibilityEnum;
       DeclarationLine: Integer = 1;
-      ImplementationLine: Integer = 1): TMethodTreeNode;
+      ImplementationLine: Integer = 1;
+      Return: String = ''): TMethodTreeNode;
 
     procedure PopulateClassAndMethodList;
     function ProcessTypeDeclaration(
@@ -133,7 +134,8 @@ function TTreeParser.CreateFunctionTreeNode(
   FunctionType: TMethodTypeEnum;
   Visibility: TVisibilityEnum;
   DeclarationLine: Integer = 1;
-  ImplementationLine: Integer = 1): TMethodTreeNode;
+  ImplementationLine: Integer = 1;
+  Return: String = ''): TMethodTreeNode;
 var
   ClassNodeNames: TList<String>;
   OwnerClassNode: TClassTreeNode;
@@ -147,9 +149,8 @@ begin
   Result.Visibility := Visibility;
   Result.DeclarationLine := DeclarationLine;
   Result.ImplementationLine := ImplementationLine;
-
   Inc(FIDKeyCount);
-
+  Result.Return := Return;
   // @TODO Better off to keep track of the TClassTreeNode itself for naming, but I don't know how to
   //       avoid circular referencing yet
   ClassNodeNames := TList<String>.Create;
@@ -329,6 +330,8 @@ var
   Iteration: TSyntaxNode;
   Visibility: TVisibilityEnum;
   FunctionTreeNode: TMethodTreeNode;
+  ReturnTypeNode: TSyntaxNode;
+  ReturnType: String;
 begin
   if not (SyntaxNode.Typ in [ntStrictPrivate, ntPrivate, ntStrictProtected, ntProtected, ntPublic, ntPublished]) then begin
     Visibility := vPrivate;
@@ -342,12 +345,20 @@ begin
       Continue;
     end;
 
+    ReturnType := '';
+    ReturnTypeNode :=  Iteration.FindNode(ntReturnType);
+
+    if Assigned(ReturnTypeNode) then begin
+      ReturnType :=  ReturnTypeNode.ChildNodes[0].GetAttribute(anName);
+    end;
     FunctionTreeNode := CreateFunctionTreeNode(
       ClassTreeNode,
       Iteration.GetAttribute(anName),
       GetMethodType(Iteration),
       Visibility,
-      Iteration.Line);
+      Iteration.Line,
+      1,
+      ReturnType);
 
     // @TODO: maybe add parameter here later if we have more time
     ClassTreeNode.AddFunctionTreeNode(FunctionTreeNode);

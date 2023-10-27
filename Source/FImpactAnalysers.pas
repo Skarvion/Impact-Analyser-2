@@ -432,10 +432,16 @@ procedure TImpactAnalyserForm.DisplayMethodNodeOnTreeRecursive(
 var
   FormMethodTreeNode: TTreeNode;
   MethodNodeCalledWithinThisMethodNode: TMethodTreeNode;
+  ColonReturn: String;
 begin
   // Add this method as a child of the TTree class node
+  ColonReturn := '';
+
+  if not (MethodNode.Return = '') then begin
+       ColonReturn := ': '
+  end;
   FormMethodTreeNode := TreeViewClassTree.Items.AddChildObject(
-    ParentTreeNode, MethodNode.ClassNodeName + '.' + MethodNode.FunctionName, MethodNode);
+    ParentTreeNode, MethodNode.ClassNodeName + '.' + MethodNode.FunctionName + ColonReturn + MethodNode.Return, MethodNode);
 
   for MethodNodeCalledWithinThisMethodNode in MethodNode.MethodsCalledWithinThisMethod do begin
     DisplayMethodNodeOnTreeRecursive(FormMethodTreeNode, MethodNodeCalledWithinThisMethodNode);

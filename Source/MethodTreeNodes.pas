@@ -54,7 +54,7 @@ type
 
     FDeclarationLine: Integer;
     FImplementationLine: Integer;
-
+    FReturn: String;
     FClassNodeName: String;
 
     FMethodsCalledWithinThisMethod: TList<TMethodTreeNode>;
@@ -74,7 +74,8 @@ type
       FunctionType: TMethodTypeEnum;
       Visibility: TVisibilityEnum;
       DeclarationLine: Integer = 1;
-      ImplementationLine: Integer = 1); overload;
+      ImplementationLine: Integer = 1;
+      Return: String = ''); overload;
     constructor Create; overload;
     destructor Destroy; override;
 
@@ -92,6 +93,7 @@ type
     property HasRecursion: Boolean read FHasRecursion;
     property Selected: Boolean read FSelected write FSelected;
     property ClassNodeName: String read FClassNodeName write FClassNodeName;
+    property Return: String read FReturn write FReturn;
   end;
 
 implementation
@@ -107,7 +109,9 @@ constructor TMethodTreeNode.Create(
   FunctionType: TMethodTypeEnum;
   Visibility: TVisibilityEnum;
   DeclarationLine: Integer = 1;
-  ImplementationLine: Integer = 1);
+  ImplementationLine: Integer = 1;
+  Return: String = '');
+
 begin
   FFunctionName := FunctionName;
   FFunctionType := FunctionType;
@@ -115,6 +119,7 @@ begin
   FMethodsCalledWithinThisMethod := TList<TMethodTreeNode>.Create;
   FCallerList := TList<TMethodTreeNode>.Create;
   FHasRecursion := False;
+  FReturn := Return;
 end;
 
 constructor TMethodTreeNode.Create;
