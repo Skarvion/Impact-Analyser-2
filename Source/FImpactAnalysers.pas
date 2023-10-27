@@ -1,4 +1,4 @@
-unit FImpactAnalysers;
+﻿unit FImpactAnalysers;
 
 interface
 
@@ -8,7 +8,8 @@ uses
   , TreeParsers
   , MethodTreeNodes, Vcl.ExtCtrls
   , ClassTreeNodes, Vcl.Grids
-  , DelphiAST.ProjectIndexer
+  , DelphiAST.ProjectIndexer,
+  ; Character
   , DelphiAST.Classes
   ;
 
@@ -75,6 +76,7 @@ type
     procedure MenuItemUnusedPrivateMethodsClick(Sender: TObject);
     procedure MenuItemOpenDirectoryClick(Sender: TObject);
     procedure TreeViewClassTreeHint(Sender: TObject; const Node: TTreeNode; var Hint: string);
+    procedure UpdateNodeText(TreeNode: TTreeNode; TextToAppend: String);
 
   private
     FOnlyShowPublicMethod: Boolean;
@@ -645,19 +647,45 @@ var
 begin
   DataObject := TObject(Node.Data);
   SelectedColor := clBlack;
+
   if DataObject is TClassTreeNode then begin
     Sender.Canvas.Font.Style := [fsBold];
+    UpdateNodeText(Node,'📁 ');
   end
   else if DataObject is TMethodTreeNode then begin
     MethodNode := DataObject as TMethodTreeNode;
 
     case MethodNode.Visibility of
-      vStrictPrivate: SelectedColor := clRed;
-      vPrivate: SelectedColor := clRed;
-      vStrictProtected: SelectedColor := clBlue;
-      vProtected: SelectedColor := clBlue;
-      vPublic: SelectedColor := clGreen;
-      vPublished: SelectedColor := clPurple;
+      vStrictPrivate:
+      begin
+        SelectedColor := clRed;
+        UpdateNodeText(Node, '🔒 ');
+      end;
+      vPrivate:
+      begin
+        SelectedColor := clRed;
+        UpdateNodeText(Node, '🔒 ');
+      end;
+      vStrictProtected:
+      begin
+        SelectedColor := clBlue;
+        UpdateNodeText(Node, '🛡 ');
+      end;
+      vProtected:
+      begin
+        SelectedColor := clBlue;
+        UpdateNodeText(Node, '🛡 ');
+      end;
+      vPublic:
+      begin
+        SelectedColor := clGreen;
+        UpdateNodeText(Node, '🌎 ');
+      end;
+      vPublished:
+      begin
+        SelectedColor := clPurple;
+        UpdateNodeText(Node, '📖 ');
+      end;
     end;
 
 
@@ -680,11 +708,23 @@ end;
 
 //______________________________________________________________________________________________________________________
 
+procedure TImpactAnalyserForm.UpdateNodeText(TreeNode: TTreeNode; TextToAppend: String);
+begin
+  if TreeNode.Text[1].IsLetter then
+  begin
+    TreeNode.Text := TextToAppend + TreeNode.Text;
+    TreeNode.TreeView.Invalidate;
+  end;
+end;
+//______________________________________________________________________________________________________________________
+
 procedure TImpactAnalyserForm.TreeViewClassTreeHint(Sender: TObject; const Node: TTreeNode; var Hint: string);
 var
   DataObject: TObject;
   ClassString: String;
   MethodString: String;
+  ClassHintString: String;
+  MethodHintString: String;
   ClassNode: TClassTreeNode;
   MethodNode: TMethodTreeNode;
 begin
@@ -697,8 +737,10 @@ begin
     ClassString := Format('Class: %s | Declared on Line: %d | Has %d methods', [ClassNode.ClassNodeName,
                                                                                 ClassNode.DeclarationLine,
                                                                                 ClassNode.MethodList.Count]);
+    ClassHintString := Format('Line: %d | Has %d methods', [ClassNode.DeclarationLine,
+                                                                                ClassNode.MethodList.Count]);
     StatusBar.SimpleText := ClassString;
-    Hint :=  ClassString;
+    Hint :=  ClassHintString;
   end
   else if DataObject is TMethodTreeNode then begin
   //show information about method in the status bar
@@ -709,8 +751,10 @@ begin
                                                                                                                                           TMethodTreeNode.C_VisibilityTypeString[MethodNode.Visibility],
                                                                                                                                           MethodNode.ImplementationLine,
                                                                                                                                           IfThen(MethodNode.HasRecursion, 'YES', 'NO')]);
+    MethodHintString := Format('Declared on Line: %d | Implemented on Line: %d', [MethodNode.DeclarationLine,
+                                                                             MethodNode.ImplementationLine]);
     StatusBar.SimpleText := MethodString;
-    Hint :=  MethodString;
+    Hint :=  MethodHintString;
   end
 end;
 //______________________________________________________________________________________________________________________
