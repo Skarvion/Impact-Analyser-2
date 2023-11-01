@@ -4,8 +4,7 @@ interface
 
 uses
     System.Generics.Collections
-  , ClassTreeNodes
-  , MethodTreeNodes
+  , SymbolTreeDataObjects
   , DelphiAST.Classes
   , DelphiAST.Consts
   , DelphiAST.ProjectIndexer
@@ -15,20 +14,21 @@ type
 
   TTreeParser = class(TObject)
   private
+    FUnitNodes: TObjectDictionary<String, TUnitTreeNode>;
+    // Keep list of multiple class tree nodes as it's possible to have the same class name in different unit
+    FClassNodesDictionary: TObjectDictionary<STring, TObjectList<TClassTreeNode>>;
+
     FIDKeyCount: Integer;
-    FClassList: TObjectList<TClassTreeNode>;
     FIsLoaded: Boolean;
-
-    // Class definition from Delphi AST
-    FRootSyntaxNode: TSyntaxNode;
-
-    FSyntaxNodeDict: TDictionary<String, TSyntaxNode>;
-
 
     FUncateredMethods: TList<TSyntaxNode>;
 
+    // @TODO Later add a TObjectDictionary<TClassTreeNode, TUnitTreeNode> for optimisation
+    //      or TObjectDictionary<String, TClassTreeNode>
+
     function CreateClassTreeNode(
-      ClassName: String;
+      UnitTreeNode: TUnitTreeNode;
+      ClassNodeName: String;
       ClassType: TClassNodeTypeEnum;
       DeclarationLine: Integer;
       OwnerClassNode: TClassTreeNode
@@ -38,12 +38,12 @@ type
       FunctionName: String;
       FunctionType: TMethodTypeEnum;
       Visibility: TVisibilityEnum;
-      DeclarationLine: Integer = 1;
-      ImplementationLine: Integer = 1;
-      Return: String = ''): TMethodTreeNode;
+      DeclarationLine: Integer;
+      Return: String): TMethodTreeNode;
 
-    procedure PopulateClassAndMethodList;
+    procedure PopulateClassAndMethodList(UnitTreeNode: TUnitTreeNode);
     function ProcessTypeDeclaration(
+      UnitTreeNode: TUnitTreeNode;
       TypeDeclarationNode: TSyntaxNode;
       OwnerClassNode: TClassTreeNode
     ): TClassTreeNode;
@@ -51,12 +51,14 @@ type
       ClassTreeNode: TClassTreeNode;
       SyntaxNode: TSyntaxNode);
 
-    procedure PopulateMethodImplementation;
-    function GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode;
+    procedure PopulateMethodImplementation(UnitTreeNode: TUnitTreeNode);
+    function GetClassNode(
+      CurrentUnitTreeNode: TUnitTreeNode;
+      ClassHierarchy: TList<String>): TClassTreeNode;
     procedure ProcessMethod(
       ClassNode: TClassTreeNode;
-      MethodNode: TMethodTreeNode;
-      SyntaxNode: TSyntaxNode);
+      MethodNode: TMethodTreeNode
+    );
     procedure RecurseAddCallMethod(
       ThisClassNode: TClassTreeNode;
       SelectedMethodNode: TMethodTreeNode;
@@ -76,10 +78,10 @@ type
 
       function GetUnusedPrivateMethods: TList<TMethodTreeNode>;
 
-      property ClassList: TObjectList<TClassTreeNode> read FClassList;
       property IsLoaded: Boolean read FIsLoaded;
 
-      property RootSyntaxNode: TSyntaxNode read FRootSyntaxNode;
+      property UnitNodes: TObjectDictionary<String, TUnitTreeNode> read FUnitNodes;
+      property ClassNodesDictionary: TObjectDictionary<STring, TObjectList<TClassTreeNode>> read FClassNodesDictionary;
   end;
 
 implementation
@@ -97,37 +99,47 @@ uses
 constructor TTreeParser.Create;
 begin
   FIDKeyCount := 0;
-  FClassList := TObjectList<TClassTreeNode>.Create(True);
   FIsLoaded := False;
 
   FUncateredMethods := TList<TSyntaxNode>.Create;
 
+  FUnitNodes := TObjectDictionary<String, TUnitTreeNode>.Create([doOwnsValues]);
+  FClassNodesDictionary := TObjectDictionary<String, TObjectList<TClassTreeNode>>.Create([doOwnsValues]);
 end;
 
 destructor TTreeParser.Destroy;
 begin
   ClearTree;
+  FreeAndNil(FClassNodesDictionary);
+  FreeAndNil(FUnitNodes);
   FreeAndNil(FUncateredMethods);
-  FreeAndNil(FClassList);
   inherited;
 end;
 
 function TTreeParser.CreateClassTreeNode(
-  ClassName: String;
+  UnitTreeNode: TUnitTreeNode;
+  ClassNodeName: String;
   ClassType: TClassNodeTypeEnum;
   DeclarationLine: Integer;
   OwnerClassNode: TClassTreeNode
 ): TClassTreeNode;
 begin
   Result := TClassTreeNode.Create(
+    UnitTreeNode,
     FIDKeyCount,
-    ClassName,
+    ClassNodeName,
     ClassType,
     DeclarationLine,
     OwnerClassNode
   );
 
   Inc(FIDKeyCount);
+
+  if not FClassNodesDictionary.ContainsKey(ClassNodeName) then begin
+    FClassNodesDictionary.Add(ClassNodeName, TObjectList<TClassTreeNode>.Create(False));
+  end;
+
+  FClassNodesDictionary[ClassNodeName].Add(Result);
 end;
 
 function TTreeParser.CreateFunctionTreeNode(
@@ -135,43 +147,19 @@ function TTreeParser.CreateFunctionTreeNode(
   FunctionName: String;
   FunctionType: TMethodTypeEnum;
   Visibility: TVisibilityEnum;
-  DeclarationLine: Integer = 1;
-  ImplementationLine: Integer = 1;
-  Return: String = ''): TMethodTreeNode;
-var
-  ClassNodeNames: TList<String>;
-  OwnerClassNode: TClassTreeNode;
-  CombinedClassNodeName: String;
-  Index: Integer;
+  DeclarationLine: Integer;
+  Return: String): TMethodTreeNode;
 begin
-  Result := TMethodTreeNode.Create;
+  Result := TMethodTreeNode.Create(
+    ClassNode,
+    FunctionName,
+    FunctionType,
+    Visibility,
+    DeclarationLine,
+    Return
+  );
   Result.ID := FIDKeyCount;
-  Result.FunctionName := FunctionName;
-  Result.FunctionType := FunctionType;
-  Result.Visibility := Visibility;
-  Result.DeclarationLine := DeclarationLine;
-  Result.ImplementationLine := ImplementationLine;
   Inc(FIDKeyCount);
-  Result.Return := Return;
-  // @TODO Better off to keep track of the TClassTreeNode itself for naming, but I don't know how to
-  //       avoid circular referencing yet
-  ClassNodeNames := TList<String>.Create;
-  ClassNodeNames.Add(ClassNode.ClassNodeName);
-
-  OwnerClassNode := ClassNode;
-  while Assigned(OwnerClassNode.OwnerClassNode) do begin
-    OwnerClassNode := OwnerClassNode.OwnerClassNode;
-    ClassNodeNames.Add(OwnerClassNode.ClassNodeName);
-  end;
-
-  CombinedClassNodeName := '';
-  for Index := ClassNodeNames.Count - 1 downto 0 do begin
-    CombinedClassNodeName := CombinedClassNodeName + IfThen(CombinedClassNodeName <> '', '.') + ClassNodeNames[Index];
-  end;
-
-  Result.ClassNodeName := CombinedClassNodeName;
-
-  FreeAndNil(ClassNodeNames);
 end;
 
 class function TTreeParser.GetFunctionTreeVisibility(
@@ -224,10 +212,14 @@ begin
 end;
 
 procedure TTreeParser.ParseFromDelphiAST(SyntaxNode: TSyntaxNode);
+var
+  UnitTreeNode: TUnitTreeNode;
 begin
-  FRootSyntaxNode := SyntaxNode;
-  PopulateClassAndMethodList;
-  PopulateMethodImplementation;
+  UnitTreeNode := TUnitTreeNode.Create(SyntaxNode);
+  FUnitNodes.Add(UnitTreeNode.UnitNodeName, UnitTreeNode);
+
+  PopulateClassAndMethodList(UnitTreeNode);
+  PopulateMethodImplementation(UnitTreeNode);
   FIsLoaded := True;
 end;
 
@@ -235,6 +227,7 @@ procedure TTreeParser.ParseFromProjectIndex(ProjectIndex: TProjectIndexer);
 var
   Index: Integer;
 begin
+  ClearTree;
   for Index := 0 to ProjectIndex.ParsedUnits.Count - 1 do begin
     if TRegEx.IsMatch(ProjectIndex.ParsedUnits[Index].Path, '\.pas$') then begin
       ParseFromDelphiAST(ProjectIndex.ParsedUnits[Index].SyntaxTree);
@@ -242,24 +235,24 @@ begin
   end;
 end;
 
-procedure TTreeParser.PopulateClassAndMethodList;
+procedure TTreeParser.PopulateClassAndMethodList(UnitTreeNode: TUnitTreeNode);
 var
   InterfaceNode: TSyntaxNode;
   ChildNode: TSyntaxNode;
   TypeChildNode: TSyntaxNode;
   TopClassNode: TClassTreeNode;
 begin
-  InterfaceNode := FRootSyntaxNode.FindNode(ntInterface);
+  InterfaceNode := UnitTreeNode.RootSyntaxNode.FindNode(ntInterface);
   Assert(Assigned(InterfaceNode), 'Interface node is not found, something must be wrong');
 
   for ChildNode in InterfaceNode.ChildNodes do begin
     if ChildNode.Typ = ntTypeSection then begin
       for TypeChildNode in ChildNode.ChildNodes do begin
         if TypeChildNode.Typ = ntTypeDecl then begin
-          TopClassNode := ProcessTypeDeclaration(TypeChildNode, nil);
+          TopClassNode := ProcessTypeDeclaration(UnitTreeNode, TypeChildNode, nil);
 
           if Assigned(TopClassNode) then begin
-            FClassList.Add(TopClassNode)
+            UnitTreeNode.TopLevelClassNodes.Add(TopClassNode)
           end;
         end;
       end;
@@ -268,6 +261,7 @@ begin
 end;
 
 function TTreeParser.ProcessTypeDeclaration(
+  UnitTreeNode: TUnitTreeNode;
   TypeDeclarationNode: TSyntaxNode;
   OwnerClassNode: TClassTreeNode
 ): TClassTreeNode;
@@ -302,6 +296,7 @@ begin
   end;
 
   Result := CreateClassTreeNode(
+    UnitTreeNode,
     TypeDeclarationNode.GetAttribute(anName),
     ClassType,
     TypeDeclarationNode.Line,
@@ -318,7 +313,7 @@ begin
 
   ChildTypeDeclarationNodes := FindAllNodesOfType(TypeDeclarationNode, ntTypeDecl, fmNoSelfRecurse);
   for ChildTypeDeclarationNode in ChildTypeDeclarationNodes do begin
-    NestedClassNode := ProcessTypeDeclaration(ChildTypeDeclarationNode, Result);
+    NestedClassNode := ProcessTypeDeclaration(UnitTreeNode, ChildTypeDeclarationNode, Result);
     if Assigned(NestedClassNode) then begin
       Result.NestedClassNodes.Add(NestedClassNode);
     end;
@@ -359,15 +354,15 @@ begin
       GetMethodType(Iteration),
       Visibility,
       Iteration.Line,
-      1,
-      ReturnType);
+      ReturnType
+    );
 
     // @TODO: maybe add parameter here later if we have more time
     ClassTreeNode.AddFunctionTreeNode(FunctionTreeNode);
   end;
 end;
 
-procedure TTreeParser.PopulateMethodImplementation;
+procedure TTreeParser.PopulateMethodImplementation(UnitTreeNode: TUnitTreeNode);
 var
   ImplementationNode: TSyntaxNode;
   MethodIteration: TSyntaxNode;
@@ -377,7 +372,7 @@ var
   SelectedClassNode: TClassTreeNode;
   SelectedMethodNode: TMethodTreeNode;
 begin
-  ImplementationNode := FRootSyntaxNode.FindNode(ntImplementation);
+  ImplementationNode := UnitTreeNode.RootSyntaxNode.FindNode(ntImplementation);
   if not Assigned(ImplementationNode) then begin
     raise Exception.Create('Type section is empty, something must be wrong');
   end;
@@ -406,11 +401,11 @@ begin
 
 
       // Get small tree class node
-      SelectedClassNode := GetClassNode(ClassHierarchy);
+      SelectedClassNode := GetClassNode(UnitTreeNode, ClassHierarchy);
 
       if not Assigned(SelectedClassNode) then begin
 //        raise Exception.Create('Class name is not found: ' + MethodNameList.DelimitedText);
-          Exit;
+        Exit;
       end;
 
 
@@ -427,7 +422,9 @@ begin
         Exit;
       end;
 
-      ProcessMethod(SelectedClassNode, SelectedMethodNode, MethodIteration);
+      SelectedMethodNode.ImplementationNode := MethodIteration;
+
+      ProcessMethod(SelectedClassNode, SelectedMethodNode);
 
       FreeAndNil(ClassHierarchy);
     end
@@ -436,7 +433,10 @@ begin
   FreeAndNil(MethodNameList);
 end;
 
-function TTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode;
+function TTreeParser.GetClassNode(
+  CurrentUnitTreeNode: TUnitTreeNode;
+  ClassHierarchy: TList<String>
+): TClassTreeNode;
 
   function GetClassNodeRecursively(
     CurrentClassNode: TClassTreeNode;
@@ -473,38 +473,45 @@ function TTreeParser.GetClassNode(ClassHierarchy: TList<String>): TClassTreeNode
   end;
 
 var
+  SelectedUnitTreeNode: TUnitTreeNode;
   TopClassNode: TClassTreeNode;
+  OtherUnitTreeNode: TUnitTreeNode;
 begin
   Result := nil;
-  for TopClassNode in FClassList do begin
+  SelectedUnitTreeNode := CurrentUnitTreeNode;
+  if FUnitNodes.ContainsKey(ClassHierarchy[0]) then begin
+    SelectedUnitTreeNode := FUnitNodes[ClassHierarchy[0]];
+  end;
+
+  for TopClassNode in SelectedUnitTreeNode.TopLevelClassNodes do begin
     Result := GetClassNodeRecursively(TopClassNode, ClassHierarchy);
     if Assigned(Result) then begin
       Break;
+    end;
+  end;
+
+  if not Assigned(Result) then begin
+    for OtherUnitTreeNode in FUnitNodes.Values do begin
+      if OtherUnitTreeNode = SelectedUnitTreeNode then begin
+        Continue;
+      end;
+
+      for TopClassNode in OtherUnitTreeNode.TopLevelClassNodes do begin
+        Result := GetClassNodeRecursively(TopClassNode, ClassHierarchy);
+        if Assigned(Result) then begin
+          Exit;
+        end;
+      end;
     end;
   end;
 end;
 
 procedure TTreeParser.ProcessMethod(
   ClassNode: TClassTreeNode;
-
-  // small tree method node
-  MethodNode: TMethodTreeNode;
-
-  // Big tree method node
-  SyntaxNode: TSyntaxNode);
-var
-  StatementsSyntaxNode: TSyntaxNode;
+  MethodNode: TMethodTreeNode
+);
 begin
-  MethodNode.ImplementationLine := SyntaxNode.Line;
-
-  // Actual content of the method:
-  StatementsSyntaxNode := SyntaxNode.FindNode(ntStatements);
-
-  if not Assigned(StatementsSyntaxNode) then begin
-    raise Exception.Create('Statements node not found');
-  end;
-
-  RecurseAddCallMethod(ClassNode, MethodNode, StatementsSyntaxNode);
+  RecurseAddCallMethod(ClassNode, MethodNode, MethodNode.ImplementationNode);
 end;
 
 procedure TTreeParser.RecurseAddCallMethod(
@@ -513,67 +520,74 @@ procedure TTreeParser.RecurseAddCallMethod(
   // Method content (big tree statements node)
   SyntaxNode: TSyntaxNode);
 
-  procedure AddFoundMethodToSelectedMethod(
-    Iteration: TSyntaxNode
-  );
+  procedure AddFoundMethodToSelectedMethod(Iteration: TSyntaxNode);
   var
     IdentifierSyntaxNode: TSyntaxNode;
     CalledMethodName: String;
     FoundMethodNode: TMethodTreeNode;
     ResultMethodVal: TMethodTreeNode;
-    ClassNodeItem: TClassTreeNode;
+    ClassNameAndNodes: TPair<String, TObjectList<TClassTreeNode>>;
+    ClassNode: TClassTreeNode;
   begin
-      IdentifierSyntaxNode := Iteration.FindNode(ntIdentifier);
+    IdentifierSyntaxNode := Iteration.FindNode(ntIdentifier);
 
-      FoundMethodNode := nil;
+    FoundMethodNode := nil;
 
-      // We did not go into the dot
+    // We did not go into the dot
 
-      if Assigned(IdentifierSyntaxNode) then begin
+    if Assigned(IdentifierSyntaxNode) then begin
 
-        // MyFunc
-        if Length(Iteration.ChildNodes) = 1 then begin
-          CalledMethodName := Iteration.ChildNodes[0].GetAttribute(anName);
-          FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName);
+      // MyFunc
+      if Length(Iteration.ChildNodes) = 1 then begin
+        CalledMethodName := Iteration.ChildNodes[0].GetAttribute(anName);
+        FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName);
+      end
+
+      // MyClass.MyFunc
+      else if Length(Iteration.ChildNodes) = 2 then begin
+
+        CalledMethodName := Iteration.ChildNodes[1].GetAttribute(anName);
+
+        if (SameText(Iteration.ChildNodes[0].GetAttribute(anName), 'self')
+          or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ThisClassNode.ClassNodeName)) then
+        begin
+
+          FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName); // Search only in class of this function
         end
+        else begin
+          // Search all classes, except current class
+          for ClassNameAndNodes in FClassNodesDictionary do begin
+            if ClassNameAndNodes.Key = ThisClassNode.ClassNodeName then begin
+              Continue;
+            end;
 
-        // MyClass.MyFunc
-        else if Length(Iteration.ChildNodes) = 2 then begin
-
-          CalledMethodName := Iteration.ChildNodes[1].GetAttribute(anName);
-
-          if (SameText(Iteration.ChildNodes[0].GetAttribute(anName), 'self')
-           or SameText(Iteration.ChildNodes[0].GetAttribute(anName), ThisClassNode.ClassNodeName)) then
-          begin
-
-            FoundMethodNode := ThisClassNode.GetMethodNode(CalledMethodName); // Search only in class of this function
-          end
-          else begin
-            // Search all classes, except current class
-            for ClassNodeItem in FClassList do begin
-              if ClassNodeItem.ClassNodeName = ThisClassNode.ClassNodeName then Continue;
-
-              ResultMethodVal := ClassNodeItem.GetMethodNode(CalledMethodName);
+            for ClassNode in ClassNameAndNodes.Value do begin
+              ResultMethodVal := ClassNode.GetMethodNode(CalledMethodName);
 
               if Assigned(ResultMethodVal) then begin
                 FoundMethodNode := ResultMethodVal;
                 Break;
               end;
             end;
+
+            if Assigned(FoundMethodNode) then begin
+              Break;
+            end;
           end;
-
-        end
-
-        // Error
-        else begin
-          raise Exception.Create('Called method name is invalid:');
         end;
 
-        if Assigned(FoundMethodNode) then begin
-          // SelectedMethodNode has a call to FoundMethodNode in it's implementation.
-          SelectedMethodNode.AddMethodCall(FoundMethodNode);
-        end;
+      end
+
+      // Error
+      else begin
+        raise Exception.Create('Called method name is invalid:');
       end;
+
+      if Assigned(FoundMethodNode) then begin
+        // SelectedMethodNode has a call to FoundMethodNode in it's implementation.
+        SelectedMethodNode.AddMethodCall(FoundMethodNode);
+      end;
+    end;
   end;
 
 var
@@ -588,7 +602,7 @@ begin
     end
 
     else if Iteration.Typ = ntDot then begin
-       AddFoundMethodToSelectedMethod(Iteration);
+      AddFoundMethodToSelectedMethod(Iteration);
     end;
 
     RecurseAddCallMethod(ThisClassNode, SelectedMethodNode, Iteration);
@@ -605,24 +619,26 @@ begin
   end;
 
   FUncateredMethods.Clear;
-  FClassList.Clear;
-
+  FClassNodesDictionary.Clear;
+  FUnitNodes.Clear;
 end;
 
 function TTreeParser.GetUnusedPrivateMethods: TList<TMethodTreeNode>;
 var
-  SelectedClassTreeNode: TClassTreeNode;
-  SelectedMethodTreeNode: TMethodTreeNode;
+  ClassNodes: TObjectList<TClassTreeNode>;
+  ClassNode: TClassTreeNode;
+  MethodNode: TMethodTreeNode;
 begin
   Result := TList<TMethodTreeNode>.Create;
-  for SelectedClassTreeNode in FClassList do begin
-    for SelectedMethodTreeNode in SelectedClassTreeNode.GetMethodNodeByVisibility([vStrictPrivate, vPrivate]) do
-    begin
-      if SelectedMethodTreeNode.CallerList.Count = 0 then begin
-        Result.Add(SelectedMethodTreeNode);
+  for ClassNodes in FClassNodesDictionary.Values do begin
+    for ClassNode in ClassNodes do begin
+      for MethodNode in ClassNode.GetMethodNodeByVisibility([vStrictPrivate, vPrivate]) do begin
+        if MethodNode.CallerList.Count = 0 then begin
+          Result.Add(MethodNode);
+        end;
       end;
     end;
-  end
+  end;
 end;
 
 end.

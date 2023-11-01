@@ -6,8 +6,9 @@ uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.Menus
   , TreeParsers
-  , MethodTreeNodes, Vcl.ExtCtrls
-  , ClassTreeNodes, Vcl.Grids
+  , Vcl.ExtCtrls
+  , Vcl.Grids
+  , SymbolTreeDataObjects
   , DelphiAST.ProjectIndexer
   , Character
   , DelphiAST.Classes
@@ -168,6 +169,7 @@ uses
   , Vcl.FileCtrl
   , IOUtils
   , DelphiAST
+  , System.UITypes
   ;
 
 {$R *.dfm}
@@ -378,6 +380,7 @@ end;
 
 procedure TImpactAnalyserForm.DisplayTree;
 var
+  ClassNodes: TObjectList<TClassTreeNode>;
   ClassNode: TClassTreeNode;
 begin
   TreeViewClassTree.Items.Clear;
@@ -386,8 +389,10 @@ begin
   end;
 
   // Use FunctionTreeParser's InFileClass List to display each node on tree
-  for ClassNode in FTreeParser.ClassList do begin
-    DisplayClassNodeOnTree(ClassNode);
+  for ClassNodes in FTreeParser.ClassNodesDictionary.Values do begin
+    for ClassNode in ClassNodes do begin
+      DisplayClassNodeOnTree(ClassNode);
+    end;
   end;
 end;
 
@@ -441,10 +446,13 @@ begin
   ColonReturn := '';
 
   if not (MethodNode.Return = '') then begin
-       ColonReturn := ': '
+    ColonReturn := ': '
   end;
   FormMethodTreeNode := TreeViewClassTree.Items.AddChildObject(
-    ParentTreeNode, MethodNode.ClassNodeName + '.' + MethodNode.FunctionName + ColonReturn + MethodNode.Return, MethodNode);
+    ParentTreeNode,
+    MethodNode.OwnerClassNode.ClassNodeName + '.' + MethodNode.FunctionName + ColonReturn + MethodNode.Return,
+    MethodNode
+  );
 
   for MethodNodeCalledWithinThisMethodNode in MethodNode.MethodsCalledWithinThisMethod do begin
     DisplayMethodNodeOnTreeRecursive(FormMethodTreeNode, MethodNodeCalledWithinThisMethodNode);
@@ -886,6 +894,10 @@ var
 begin
   if not Assigned(FTreeParser) then begin
     Exit;
+  end
+  else if FTreeParser.UnitNodes.Count <> 1 then begin
+    MessageDlg('To export as XML, please only load 1 file', mtInformation, [TMsgDlgBtn.mbOK], 0);
+    Exit;
   end;
 
   FileSaveDialog := TFileSaveDialog.Create(Self);
@@ -893,10 +905,12 @@ begin
     Exit;
   end;
 
+  Assert(FTreeParser.UnitNodes.Count = 1, 'Should only have 1 unit loaded at this point');
+
   FileWriter := nil;
   try
     FileWriter := TStreamWriter.Create(FileSaveDialog.FileName);
-    FileWriter.Write(TSyntaxTreeWriter.ToXML(FTreeParser.RootSyntaxNode, True));
+    FileWriter.Write(TSyntaxTreeWriter.ToXML(FTreeParser.UnitNodes.Values.ToArray[0].RootSyntaxNode, True));
   finally
     FreeAndNil(FileWriter);
   end;
